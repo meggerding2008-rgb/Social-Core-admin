@@ -1,0 +1,60 @@
+{
+  "node": {
+    "85d9cc7b9a37ec1a620bd51885c13fa8fcff7446": {
+      "workers": {
+        "app/(admin)/reviews/new/page": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22C%3A%5C%5CUsers%5C%5CMegge%5C%5COneDrive%5C%5CSocial-Core-Admin-Cursor%5C%5Clib%5C%5Creviews%5C%5Cactions.ts%22%2C%5B%22updateContentReviewStatus%22%2C%22createContentReview%22%2C%22updateContentReview%22%5D%5D%5D&__client_imported__=true!",
+        "app/(admin)/reviews/[id]/page": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22C%3A%5C%5CUsers%5C%5CMegge%5C%5COneDrive%5C%5CSocial-Core-Admin-Cursor%5C%5Clib%5C%5Creviews%5C%5Cactions.ts%22%2C%5B%22updateContentReviewStatus%22%2C%22createContentReview%22%2C%22updateContentReview%22%5D%5D%5D&__client_imported__=true!"
+      },
+      "layer": {
+        "app/(admin)/reviews/new/page": "action-browser",
+        "app/(admin)/reviews/[id]/page": "action-browser"
+      }
+    },
+    "caa3b2c09956f253fc9ff917ccb253337f0d454e": {
+      "workers": {
+        "app/(admin)/reviews/new/page": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22C%3A%5C%5CUsers%5C%5CMegge%5C%5COneDrive%5C%5CSocial-Core-Admin-Cursor%5C%5Clib%5C%5Creviews%5C%5Cactions.ts%22%2C%5B%22updateContentReviewStatus%22%2C%22createContentReview%22%2C%22updateContentReview%22%5D%5D%5D&__client_imported__=true!",
+        "app/(admin)/reviews/[id]/page": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22C%3A%5C%5CUsers%5C%5CMegge%5C%5COneDrive%5C%5CSocial-Core-Admin-Cursor%5C%5Clib%5C%5Creviews%5C%5Cactions.ts%22%2C%5B%22updateContentReviewStatus%22%2C%22createContentReview%22%2C%22updateContentReview%22%5D%5D%5D&__client_imported__=true!"
+      },
+      "layer": {
+        "app/(admin)/reviews/new/page": "action-browser",
+        "app/(admin)/reviews/[id]/page": "action-browser"
+      }
+    },
+    "f0d8959e6b23f4e1a5079e3550a56e1087325bd4": {
+      "workers": {
+        "app/(admin)/reviews/new/page": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22C%3A%5C%5CUsers%5C%5CMegge%5C%5COneDrive%5C%5CSocial-Core-Admin-Cursor%5C%5Clib%5C%5Creviews%5C%5Cactions.ts%22%2C%5B%22updateContentReviewStatus%22%2C%22createContentReview%22%2C%22updateContentReview%22%5D%5D%5D&__client_imported__=true!",
+        "app/(admin)/reviews/[id]/page": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22C%3A%5C%5CUsers%5C%5CMegge%5C%5COneDrive%5C%5CSocial-Core-Admin-Cursor%5C%5Clib%5C%5Creviews%5C%5Cactions.ts%22%2C%5B%22updateContentReviewStatus%22%2C%22createContentReview%22%2C%22updateContentReview%22%5D%5D%5D&__client_imported__=true!"
+      },
+      "layer": {
+        "app/(admin)/reviews/new/page": "action-browser",
+        "app/(admin)/reviews/[id]/page": "action-browser"
+      }
+    },
+    "2da7d9209852d37fafbbd30e1a0f5b05b5cfb6d0": {
+      "workers": {
+        "app/(admin)/broadcasts/new/page": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22C%3A%5C%5CUsers%5C%5CMegge%5C%5COneDrive%5C%5CSocial-Core-Admin-Cursor%5C%5Clib%5C%5Cbroadcasts%5C%5Cactions.ts%22%2C%5B%22requestBroadcastDispatch%22%2C%22createBroadcast%22%2C%22updateBroadcast%22%5D%5D%5D&__client_imported__=true!"
+      },
+      "layer": {
+        "app/(admin)/broadcasts/new/page": "action-browser"
+      }
+    },
+    "58d3689ea37d1bfb820045f96ffcf322a0b7b428": {
+      "workers": {
+        "app/(admin)/broadcasts/new/page": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22C%3A%5C%5CUsers%5C%5CMegge%5C%5COneDrive%5C%5CSocial-Core-Admin-Cursor%5C%5Clib%5C%5Cbroadcasts%5C%5Cactions.ts%22%2C%5B%22requestBroadcastDispatch%22%2C%22createBroadcast%22%2C%22updateBroadcast%22%5D%5D%5D&__client_imported__=true!"
+      },
+      "layer": {
+        "app/(admin)/broadcasts/new/page": "action-browser"
+      }
+    },
+    "6083dab7a93e6311cad0d01933cc41583b7c2b14": {
+      "workers": {
+        "app/(admin)/broadcasts/new/page": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22C%3A%5C%5CUsers%5C%5CMegge%5C%5COneDrive%5C%5CSocial-Core-Admin-Cursor%5C%5Clib%5C%5Cbroadcasts%5C%5Cactions.ts%22%2C%5B%22requestBroadcastDispatch%22%2C%22createBroadcast%22%2C%22updateBroadcast%22%5D%5D%5D&__client_imported__=true!"
+      },
+      "layer": {
+        "app/(admin)/broadcasts/new/page": "action-browser"
+      }
+    }
+  },
+  "edge": {},
+  "encryptionKey": "pDCYHpXnLGjKjcmHpFu1JrsZFO6EANnMJ6sn0Np9m0o="
+}

@@ -1,0 +1,38 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --brand-navy: #2d4f73;
+  --brand-accent: #3a6491;
+  --brand-white: #ffffff;
+  --brand-mist: #efefef;
+  --brand-border: #e0e6ee;
+  --brand-text: #2d4f73;
+  --brand-muted: #5a738c;
+  --danger: #b42318;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  color: var(--brand-text);
+  background-color: var(--brand-mist);
+  font-family: var(--font-inter), Arial, sans-serif;
+}
+
+/* Subtle honeycomb — low contrast, navy only */
+.sc-honeycomb {
+  background-color: var(--brand-mist);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='100' viewBox='0 0 56 100'%3E%3Cpath fill='none' stroke='%232D4F73' stroke-opacity='0.06' stroke-width='1' d='M28 66L0 50L0 16L28 0L56 16L56 50L28 66L28 100'/%3E%3Cpath fill='none' stroke='%232D4F73' stroke-opacity='0.06' stroke-width='1' d='M28 0L28 34L0 50L0 84L28 100L56 84L56 50L28 34'/%3E%3C/svg%3E");
+  background-size: 56px 100px;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}

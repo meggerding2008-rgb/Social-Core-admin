@@ -1,0 +1,8 @@
+{
+  "/(admin)/reviews/new/page": "app/(admin)/reviews/new/page.js",
+  "/(admin)/content/page": "app/(admin)/content/page.js",
+  "/(admin)/reviews/page": "app/(admin)/reviews/page.js",
+  "/(admin)/reviews/[id]/page": "app/(admin)/reviews/[id]/page.js",
+  "/(admin)/broadcasts/new/page": "app/(admin)/broadcasts/new/page.js",
+  "/(admin)/broadcasts/page": "app/(admin)/broadcasts/page.js"
+}
