@@ -55,7 +55,8 @@ Voer in volgorde uit indien nog niet gedaan:
 6. `20260926_phase6_broadcast_rls.sql`
 7. `20260926_phase10_periodic_reviews.sql`
 8. `20260926_phase10b_fix_review_notify_fk.sql` (verplicht voor verzenden + notificatie)
-9. Seed: `supabase/seeds/seed_first_superadmin.sql`
+9. `20260927_admin_popups.sql`
+10. Seed: `supabase/seeds/seed_first_superadmin.sql`
 
 ## Productie-checklist
 
@@ -73,4 +74,5 @@ Voer in volgorde uit indien nog niet gedaan:
 
 ## Routes (compleet)
 
-`/login`, `/forbidden`, `/dashboard`, `/users`, `/users/[id]`, `/support`, `/support/[id]`, `/reviews`, `/reviews/new`, `/reviews/[id]`, `/content`, `/content/faq`, `/content/faq/new`, `/content/faq/[id]`, `/content/videos`, `/content/videos/new`, `/content/videos/[id]`, `/broadcasts`, `/broadcasts/new`, `/broadcasts/[id]`, `/errors`, `/errors/[id]`, `/audit`, `/admins`, `/admins/new`, `/admins/[id]`
+`/login`, `/forbidden`, `/dashboard`, `/users`, `/users/[id]`, `/support`, `/support/[id]`, `/reviews`, `/reviews/new`, `/reviews/[id]`, `/popups`, `/popups/new`, `/popups/[id]`, `/errors`, `/errors/[id]`, `/audit`, `/admins`, `/admins/new`, `/admins/[id]`  
+(Content- en broadcasts-routes blijven technisch bereikbaar; broadcasts redirecten naar pop-ups. Content staat niet meer in de sidebar.)

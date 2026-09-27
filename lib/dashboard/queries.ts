@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { listUsersNeedingReviews } from '@/lib/reviews/queries';
+import { getPopupDashboardCounts } from '@/lib/popups/queries';
 
 export type DashboardCard = {
   label: string;
@@ -77,7 +78,9 @@ async function latestFrom(
 }
 
 export async function getDashboardData(): Promise<{
-  cards: DashboardCard[];
+  userCards: DashboardCard[];
+  opsCards: DashboardCard[];
+  popupDetailCards: DashboardCard[];
   actions: DashboardAction[];
   activity: DashboardActivity[];
   system: DashboardSystemItem[];
@@ -94,9 +97,9 @@ export async function getDashboardData(): Promise<{
     newErrors,
     plannedReviews,
     conceptReviews,
-    plannedBroadcasts,
     overdueScheduledReviews,
     dueUsers,
+    popupCounts,
     recentAudit,
     recentErrors,
     lastErrorAt,
@@ -145,18 +148,13 @@ export async function getDashboardData(): Promise<{
     ),
     countOrZero(
       supabase
-        .from('broadcast_notifications')
-        .select('id', { count: 'exact', head: true })
-        .is('dispatched_at', null),
-    ),
-    countOrZero(
-      supabase
         .from('content_reviews')
         .select('id', { count: 'exact', head: true })
         .eq('status', 'gepland')
         .lt('scheduled_for', nowIso),
     ),
     listUsersNeedingReviews({ soonDays: 14, limit: 12 }),
+    getPopupDashboardCounts(),
     supabase
       .from('admin_audit_logs')
       .select('id, action, resource_type, resource_id, created_at, actor_id')
@@ -206,14 +204,10 @@ export async function getDashboardData(): Promise<{
     }, 'published_at'),
   ]);
 
-  const cards: DashboardCard[] = [
+  const userCards: DashboardCard[] = [
+    { label: 'Totaal gebruikers', value: totalUsers, href: '/users' },
     {
-      label: 'Totaal gebruikers',
-      value: totalUsers,
-      href: '/users',
-    },
-    {
-      label: 'Nieuw deze maand',
+      label: 'Nieuwe gebruikers deze maand',
       value: newUsersMonth,
       href: '/users',
     },
@@ -222,6 +216,11 @@ export async function getDashboardData(): Promise<{
       value: activeSubs,
       href: '/users?plan=all',
     },
+  ];
+
+  const reviewsToMake = dueUsers.filter((u) => u.overdue).length;
+
+  const opsCards: DashboardCard[] = [
     {
       label: 'Open support',
       value: openSupport,
@@ -239,14 +238,38 @@ export async function getDashboardData(): Promise<{
     },
     {
       label: 'Reviews te maken',
-      value: dueUsers.filter((u) => u.overdue).length,
+      value: reviewsToMake,
       href: '/reviews',
       hint: `${dueUsers.length} overdue of binnen 14 dagen`,
     },
     {
-      label: 'Broadcasts open',
-      value: plannedBroadcasts,
-      href: '/broadcasts?status=pending',
+      label: 'Openstaande pop-ups',
+      value: popupCounts.open,
+      href: '/popups',
+      hint: `${popupCounts.active} actief · ${popupCounts.planned} gepland`,
+    },
+  ];
+
+  const popupDetailCards: DashboardCard[] = [
+    {
+      label: 'Actieve pop-ups',
+      value: popupCounts.active,
+      href: '/popups?status=actief',
+    },
+    {
+      label: 'Geplande pop-ups',
+      value: popupCounts.planned,
+      href: '/popups?status=gepland',
+    },
+    {
+      label: 'Pop-ups zonder einddatum',
+      value: popupCounts.noEndDate,
+      href: '/popups',
+    },
+    {
+      label: 'Feedbackreacties',
+      value: popupCounts.feedbackResponses,
+      href: '/popups?type=feedback',
     },
   ];
 
@@ -264,7 +287,6 @@ export async function getDashboardData(): Promise<{
       id: string;
       subject?: string | null;
       status: string;
-      created_at: string;
     };
     actions.push({
       id: `support-${r.id}`,
@@ -322,22 +344,23 @@ export async function getDashboardData(): Promise<{
     });
   }
 
-  const { data: pendingBroadcasts } = await supabase
-    .from('broadcast_notifications')
-    .select('id, title, scheduled_for, dispatched_at')
-    .is('dispatched_at', null)
-    .lte('scheduled_for', nowIso)
-    .order('scheduled_for', { ascending: true })
-    .limit(5);
-
-  for (const b of pendingBroadcasts ?? []) {
-    const row = b as { id: string; title: string; scheduled_for: string };
+  if (popupCounts.planned > 0) {
     actions.push({
-      id: `bc-${row.id}`,
-      title: `Broadcast wacht op dispatcher: ${row.title}`,
-      meta: `Gepland ${formatWhen(row.scheduled_for)}`,
-      href: `/broadcasts/${row.id}`,
+      id: 'popups-planned',
+      title: `${popupCounts.planned} pop-up(s) gepland`,
+      meta: 'Controleer startdatum en doelgroep',
+      href: '/popups?status=gepland',
       urgency: 'medium',
+    });
+  }
+
+  if (popupCounts.noEndDate > 0) {
+    actions.push({
+      id: 'popups-no-end',
+      title: `${popupCounts.noEndDate} pop-up(s) zonder einddatum`,
+      meta: 'Overweeg een einddatum in te stellen',
+      href: '/popups',
+      urgency: 'low',
     });
   }
 
@@ -387,7 +410,14 @@ export async function getDashboardData(): Promise<{
     },
   ];
 
-  return { cards, actions, activity, system };
+  return {
+    userCards,
+    opsCards,
+    popupDetailCards,
+    actions,
+    activity,
+    system,
+  };
 }
 
 function ageOk(iso: string, maxHours: number): boolean {
@@ -396,7 +426,9 @@ function ageOk(iso: string, maxHours: number): boolean {
 }
 
 function auditLabel(action: string): string {
-  if (action.includes('user') && action.includes('create')) return 'Nieuwe gebruiker (audit)';
+  if (action.includes('user') && action.includes('create')) {
+    return 'Nieuwe gebruiker (audit)';
+  }
   if (action.startsWith('support')) return 'Supportactie';
   if (action.includes('error_report')) return 'Foutmelding bijgewerkt';
   if (action.includes('content_review') && action.includes('create')) {
@@ -406,6 +438,7 @@ function auditLabel(action: string): string {
     return 'Reviewstatus gewijzigd';
   }
   if (action.includes('content_review')) return 'Review bijgewerkt';
+  if (action.includes('popup')) return 'Pop-upactie';
   if (action.includes('broadcast')) return 'Broadcastactie';
   if (action.includes('admin')) return 'Adminwijziging';
   return action;
@@ -420,7 +453,7 @@ function activityHref(
     if (resourceType.includes('support')) return '/support';
     if (resourceType.includes('error')) return '/errors';
     if (resourceType.includes('review')) return '/reviews';
-    if (resourceType.includes('broadcast')) return '/broadcasts';
+    if (resourceType.includes('popup')) return '/popups';
     if (resourceType.includes('admin')) return '/admins';
     return '/audit';
   }
@@ -429,7 +462,7 @@ function activityHref(
   if (resourceType.includes('content_review') || resourceType.includes('review')) {
     return `/reviews/${resourceId}`;
   }
-  if (resourceType.includes('broadcast')) return `/broadcasts/${resourceId}`;
+  if (resourceType.includes('popup')) return `/popups/${resourceId}`;
   if (resourceType.includes('admin')) return `/admins/${resourceId}`;
   if (resourceType.includes('user') || action.includes('user')) {
     return `/users/${resourceId}`;

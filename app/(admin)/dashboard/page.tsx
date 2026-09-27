@@ -1,16 +1,56 @@
 import Link from 'next/link';
 import { requireAdmin } from '@/lib/auth/require-admin';
-import { getDashboardData } from '@/lib/dashboard/queries';
+import {
+  getDashboardData,
+  type DashboardCard,
+} from '@/lib/dashboard/queries';
 import { formatSupportDateTime } from '@/lib/support/labels';
 
 export const dynamic = 'force-dynamic';
 
+function CardGrid({
+  cards,
+  columns,
+}: {
+  cards: DashboardCard[];
+  columns: string;
+}) {
+  return (
+    <div className={`grid gap-3 ${columns}`}>
+      {cards.map((card) => (
+        <Link
+          key={card.label}
+          href={card.href}
+          className="rounded-card border border-brand-border bg-brand-white p-4 transition hover:border-brand-accent"
+        >
+          <p className="text-xs font-medium uppercase tracking-wide text-brand-accent">
+            {card.label}
+          </p>
+          <p className="mt-2 text-2xl font-semibold text-brand-navy">
+            {card.value}
+          </p>
+          {card.hint ? (
+            <p className="mt-1 text-xs text-brand-accent">{card.hint}</p>
+          ) : null}
+        </Link>
+      ))}
+    </div>
+  );
+}
+
 export default async function DashboardPage() {
   await requireAdmin();
-  const { cards, actions, activity, system } = await getDashboardData();
+  const {
+    userCards,
+    opsCards,
+    popupDetailCards,
+    actions,
+    activity,
+    system,
+  } = await getDashboardData();
 
   return (
-    <div className="mx-auto max-w-6xl space-y-8">
+    <div className="mx-auto max-w-6xl space-y-10">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight text-brand-navy">
           Dashboard
@@ -20,28 +60,33 @@ export default async function DashboardPage() {
         </p>
       </div>
 
-      <section>
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-brand-accent">
-          Overzicht
+      <section className="space-y-3">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-brand-accent">
+          Gebruikers & abonnementen
         </h2>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {cards.map((card) => (
-            <Link
-              key={card.label}
-              href={card.href}
-              className="rounded-card border border-brand-border bg-brand-white p-4 transition hover:border-brand-accent"
-            >
-              <p className="text-xs font-medium uppercase tracking-wide text-brand-accent">
-                {card.label}
-              </p>
-              <p className="mt-2 text-2xl font-semibold text-brand-navy">
-                {card.value}
-              </p>
-              {card.hint ? (
-                <p className="mt-1 text-xs text-brand-accent">{card.hint}</p>
-              ) : null}
-            </Link>
-          ))}
+        <div className="rounded-card border border-brand-border bg-brand-white/60 p-4">
+          <CardGrid cards={userCards} columns="sm:grid-cols-3" />
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-brand-accent">
+          Operationeel
+        </h2>
+        <div className="rounded-card border border-brand-border bg-brand-white/60 p-4 space-y-4">
+          <CardGrid
+            cards={opsCards}
+            columns="sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5"
+          />
+          <div className="border-t border-brand-border pt-4">
+            <p className="mb-3 text-xs font-medium uppercase tracking-wide text-brand-accent">
+              Pop-up details
+            </p>
+            <CardGrid
+              cards={popupDetailCards}
+              columns="sm:grid-cols-2 lg:grid-cols-4"
+            />
+          </div>
         </div>
       </section>
 
@@ -74,7 +119,7 @@ export default async function DashboardPage() {
                       <span
                         className={`shrink-0 rounded-[8px] border px-2 py-0.5 text-[10px] font-medium uppercase ${
                           item.urgency === 'high'
-                            ? 'border-red-200 text-red-700'
+                            ? 'border-brand-navy/40 text-brand-navy'
                             : item.urgency === 'medium'
                               ? 'border-brand-accent/40 text-brand-accent'
                               : 'border-brand-border text-brand-accent'
@@ -149,7 +194,7 @@ export default async function DashboardPage() {
               </p>
               <p className="mt-1 text-sm text-brand-navy">{item.value}</p>
               {item.ok === false ? (
-                <p className="mt-1 text-xs text-red-700">Aandacht aanbevolen</p>
+                <p className="mt-1 text-xs text-brand-accent">Aandacht aanbevolen</p>
               ) : null}
             </li>
           ))}

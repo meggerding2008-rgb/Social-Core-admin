@@ -13,10 +13,11 @@ Deelt Supabase Auth + database met de gebruikersapp. **Geen wijzigingen in de ge
 | 3 — Users | Klaar |
 | 4 — Reviews | Klaar |
 | 5 — CMS | Klaar |
-| 6 — Broadcasts | Klaar |
+| 6 — Broadcasts | Vervangen door Pop-ups |
 | 7 — Errors | Klaar |
 | 8 — Audit / Admins | Klaar |
 | 9 — Deploy prep | Klaar (nog niet deployen) |
+| Pop-ups | Klaar |
 
 ## Lokaal
 
@@ -37,3 +38,4 @@ Deelt Supabase Auth + database met de gebruikersapp. **Geen wijzigingen in de ge
 - [PHASE8_AUDIT_ADMINS.md](docs/PHASE8_AUDIT_ADMINS.md)
 - [PHASE9_DEPLOYMENT.md](docs/PHASE9_DEPLOYMENT.md)
 - [PHASE10_PERIODIC_REVIEWS.md](docs/PHASE10_PERIODIC_REVIEWS.md)
+- [POPUPS.md](docs/POPUPS.md)
