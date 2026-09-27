@@ -1,34 +1,22 @@
 import Link from 'next/link';
-import {
-  SUPPORT_CATEGORIES,
-  SUPPORT_MESSAGE_STATUSES,
-} from '@/lib/support/types';
-import { getSupportStatusLabel } from '@/lib/support/labels';
+import { WEBSITE_MESSAGE_STATUSES } from '@/lib/web-support/types';
+import { websiteMessageStatusLabel } from '@/lib/web-support/types';
 
 type Props = {
   status?: string;
-  priority?: string;
-  category?: string;
   q?: string;
-  resetHref?: string;
 };
 
 const selectClass =
   'rounded-[10px] border border-brand-border bg-brand-white px-3 py-2 text-sm text-brand-navy outline-none focus:border-brand-accent';
 
-export function SupportFilters({
-  status,
-  priority,
-  category,
-  q,
-  resetHref = '/app-support',
-}: Props) {
+export function WebSupportFilters({ status, q }: Props) {
   return (
     <form
       method="get"
       className="rounded-card border border-brand-border bg-brand-white p-4"
     >
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <label className="block text-xs font-medium text-brand-navy">
           Status
           <select
@@ -37,38 +25,9 @@ export function SupportFilters({
             className={`mt-1 w-full ${selectClass}`}
           >
             <option value="all">Alle</option>
-            {SUPPORT_MESSAGE_STATUSES.map((value) => (
+            {WEBSITE_MESSAGE_STATUSES.map((value) => (
               <option key={value} value={value}>
-                {getSupportStatusLabel(value)}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="block text-xs font-medium text-brand-navy">
-          Prioriteit
-          <select
-            name="priority"
-            defaultValue={priority ?? 'all'}
-            className={`mt-1 w-full ${selectClass}`}
-          >
-            <option value="all">Alle</option>
-            <option value="high">Prioriteit</option>
-            <option value="normal">Normaal</option>
-          </select>
-        </label>
-
-        <label className="block text-xs font-medium text-brand-navy">
-          Categorie
-          <select
-            name="category"
-            defaultValue={category ?? 'all'}
-            className={`mt-1 w-full ${selectClass}`}
-          >
-            <option value="all">Alle</option>
-            {SUPPORT_CATEGORIES.map((value) => (
-              <option key={value} value={value}>
-                {value}
+                {websiteMessageStatusLabel(value)}
               </option>
             ))}
           </select>
@@ -80,7 +39,7 @@ export function SupportFilters({
             type="search"
             name="q"
             defaultValue={q ?? ''}
-            placeholder="Onderwerp, bericht, gebruiker…"
+            placeholder="Naam, e-mail, onderwerp…"
             className={`mt-1 w-full ${selectClass}`}
           />
         </label>
@@ -94,7 +53,7 @@ export function SupportFilters({
           Filters toepassen
         </button>
         <Link
-          href={resetHref}
+          href="/web-support"
           className="rounded-[10px] border border-brand-border px-4 py-2 text-sm font-medium text-brand-navy transition hover:border-brand-accent hover:bg-brand-mist"
         >
           Reset (alle)

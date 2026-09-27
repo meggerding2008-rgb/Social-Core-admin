@@ -94,6 +94,7 @@ export async function getDashboardData(): Promise<{
     newUsersMonth,
     activeSubs,
     openSupport,
+    newWebSupport,
     newErrors,
     plannedReviews,
     conceptReviews,
@@ -127,6 +128,12 @@ export async function getDashboardData(): Promise<{
         .from('support_messages')
         .select('id', { count: 'exact', head: true })
         .in('status', ['open', 'in_behandeling']),
+    ),
+    countOrZero(
+      supabase
+        .from('website_messages')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'nieuw'),
     ),
     countOrZero(
       supabase
@@ -222,9 +229,14 @@ export async function getDashboardData(): Promise<{
 
   const opsCards: DashboardCard[] = [
     {
-      label: 'Open support',
+      label: 'Openstaande App support',
       value: openSupport,
-      href: '/support?status=open',
+      href: '/app-support?status=open',
+    },
+    {
+      label: 'Nieuwe Web supportberichten',
+      value: newWebSupport,
+      href: '/web-support?status=nieuw',
     },
     {
       label: 'Nieuwe fouten',
@@ -289,10 +301,33 @@ export async function getDashboardData(): Promise<{
       status: string;
     };
     actions.push({
-      id: `support-${r.id}`,
-      title: r.subject?.trim() || 'Open supportvraag',
-      meta: `Status: ${r.status}`,
-      href: `/support/${r.id}`,
+      id: `app-support-${r.id}`,
+      title: r.subject?.trim() || 'Open App supportvraag',
+      meta: `App support · ${r.status}`,
+      href: `/app-support/${r.id}`,
+      urgency: 'high',
+    });
+  }
+
+  const { data: webRows } = await supabase
+    .from('website_messages')
+    .select('id, subject, sender_name, status, created_at')
+    .eq('status', 'nieuw')
+    .order('created_at', { ascending: true })
+    .limit(5);
+
+  for (const row of webRows ?? []) {
+    const r = row as {
+      id: string;
+      subject?: string | null;
+      sender_name?: string;
+      status: string;
+    };
+    actions.push({
+      id: `web-support-${r.id}`,
+      title: r.subject?.trim() || 'Nieuw websitebericht',
+      meta: `Web support · ${r.sender_name || 'onbekend'}`,
+      href: `/web-support/${r.id}`,
       urgency: 'high',
     });
   }
@@ -429,7 +464,9 @@ function auditLabel(action: string): string {
   if (action.includes('user') && action.includes('create')) {
     return 'Nieuwe gebruiker (audit)';
   }
-  if (action.startsWith('support')) return 'Supportactie';
+  if (action.startsWith('support') || action.startsWith('web_support')) {
+    return action.includes('web') ? 'Web supportactie' : 'Supportactie';
+  }
   if (action.includes('error_report')) return 'Foutmelding bijgewerkt';
   if (action.includes('content_review') && action.includes('create')) {
     return 'Review aangemaakt';
@@ -450,14 +487,18 @@ function activityHref(
   resourceId: string | null,
 ): string {
   if (!resourceId) {
-    if (resourceType.includes('support')) return '/support';
+    if (resourceType.includes('website_message')) return '/web-support';
+    if (resourceType.includes('support')) return '/app-support';
     if (resourceType.includes('error')) return '/errors';
     if (resourceType.includes('review')) return '/reviews';
     if (resourceType.includes('popup')) return '/popups';
     if (resourceType.includes('admin')) return '/admins';
     return '/audit';
   }
-  if (resourceType.includes('support')) return `/support/${resourceId}`;
+  if (resourceType.includes('website_message')) {
+    return `/web-support/${resourceId}`;
+  }
+  if (resourceType.includes('support')) return `/app-support/${resourceId}`;
   if (resourceType.includes('error')) return `/errors/${resourceId}`;
   if (resourceType.includes('content_review') || resourceType.includes('review')) {
     return `/reviews/${resourceId}`;

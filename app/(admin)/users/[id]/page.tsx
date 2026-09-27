@@ -5,6 +5,8 @@ import {
   requireAdmin,
 } from '@/lib/auth/require-admin';
 import { canMutateUsers, canReadUsers } from '@/lib/users/types';
+import { canContactUsers, isSupportMessageStatus } from '@/lib/support/types';
+import { canMutateReviews } from '@/lib/reviews/types';
 import {
   getUserProfile,
   getUserSubscription,
@@ -17,7 +19,6 @@ import {
   listContentReviews,
 } from '@/lib/reviews/queries';
 import { formatReviewDue } from '@/lib/reviews/frequency';
-import { canMutateReviews } from '@/lib/reviews/types';
 import { ReviewStatusBadge } from '@/components/reviews/ReviewStatusBadge';
 import {
   accountStatusLabel,
@@ -28,7 +29,6 @@ import { formatSupportDateTime } from '@/lib/support/labels';
 import { AccountStatusBadge } from '@/components/users/AccountStatusBadge';
 import { UserAdminActions } from '@/components/users/UserAdminActions';
 import { StatusBadge } from '@/components/support/StatusBadge';
-import { isSupportMessageStatus } from '@/lib/support/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -84,6 +84,7 @@ export default async function UserDetailPage({
 
   const canMutate = canMutateUsers(admin.profile.role);
   const canReview = canMutateReviews(admin.profile.role);
+  const canContact = canContactUsers(admin.profile.role);
   const subscription = subscriptionResult.row;
   const usage = usageResult.row;
 
@@ -96,13 +97,25 @@ export default async function UserDetailPage({
         >
           ← Terug naar gebruikers
         </Link>
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <h1 className="text-2xl font-semibold tracking-tight text-brand-navy">
-            {user.name?.trim() || user.email || 'Gebruiker'}
-          </h1>
-          <AccountStatusBadge status={user.account_status} />
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-2xl font-semibold tracking-tight text-brand-navy">
+                {user.name?.trim() || user.email || 'Gebruiker'}
+              </h1>
+              <AccountStatusBadge status={user.account_status} />
+            </div>
+            <p className="mt-1 text-sm text-brand-accent">{user.email}</p>
+          </div>
+          {canContact ? (
+            <Link
+              href={`/app-support/new?userId=${user.id}`}
+              className="rounded-[10px] border border-brand-navy bg-brand-navy px-4 py-2 text-sm font-medium text-white hover:bg-brand-accent"
+            >
+              Nieuw bericht aan gebruiker
+            </Link>
+          ) : null}
         </div>
-        <p className="mt-1 text-sm text-brand-accent">{user.email}</p>
       </div>
 
       <section className="rounded-card border border-brand-border bg-brand-white p-5">
@@ -367,7 +380,7 @@ export default async function UserDetailPage({
             {supportResult.rows.map((ticket) => (
               <li key={ticket.id} className="py-2">
                 <Link
-                  href={`/support/${ticket.id}`}
+                  href={`/app-support/${ticket.id}`}
                   className="flex flex-wrap items-center justify-between gap-2 hover:text-brand-accent"
                 >
                   <span className="text-sm text-brand-navy">

@@ -1,34 +1,70 @@
 import Image from 'next/image';
 import { SignOutButton } from '@/components/auth/SignOutButton';
-import { AdminNav } from '@/components/layout/AdminNav';
+import { AdminNav, type NavEntry } from '@/components/layout/AdminNav';
 import type { AdminUser } from '@/lib/auth/types';
-
-type NavItem = {
-  href: string;
-  label: string;
-  superadminOnly?: boolean;
-};
-
-const NAV: NavItem[] = [
-  { href: '/dashboard', label: 'Dashboard' },
-  { href: '/users', label: 'Gebruikers' },
-  { href: '/support', label: 'Support' },
-  { href: '/reviews', label: 'Reviews' },
-  { href: '/popups', label: 'Pop-ups' },
-  { href: '/errors', label: 'Fouten' },
-  { href: '/audit', label: 'Audit' },
-  { href: '/admins', label: 'Admins', superadminOnly: true },
-];
+import { getSupportBadgeCounts } from '@/lib/nav/badges';
+import { canReadSupport } from '@/lib/support/types';
 
 type Props = {
   admin: AdminUser;
   children: React.ReactNode;
 };
 
-export function AdminShell({ admin, children }: Props) {
-  const items = NAV.filter(
-    (item) => !item.superadminOnly || admin.profile.role === 'superadmin',
-  ).map(({ href, label }) => ({ href, label }));
+export async function AdminShell({ admin, children }: Props) {
+  const role = admin.profile.role;
+  const showSupport = canReadSupport(role);
+  const badges = showSupport
+    ? await getSupportBadgeCounts(role)
+    : { appSupport: 0, webSupport: 0 };
+
+  const entries: NavEntry[] = [
+    { type: 'link', href: '/dashboard', label: 'Dashboard' },
+  ];
+
+  if (showSupport) {
+    entries.push(
+      {
+        type: 'link',
+        href: '/app-support',
+        label: 'App support',
+        badge: badges.appSupport,
+      },
+      {
+        type: 'link',
+        href: '/web-support',
+        label: 'Web support',
+        badge: badges.webSupport,
+      },
+    );
+  }
+
+  entries.push(
+    { type: 'link', href: '/reviews', label: 'Reviews' },
+    { type: 'link', href: '/errors', label: 'Fouten' },
+  );
+
+  const accountsChildren: { href: string; label: string }[] = [
+    { href: '/users', label: 'Gebruikers' },
+  ];
+  if (role === 'superadmin') {
+    accountsChildren.push({ href: '/admins', label: 'Admins' });
+  }
+
+  entries.push(
+    {
+      type: 'group',
+      label: 'Accounts & Toegang',
+      children: accountsChildren,
+    },
+    {
+      type: 'group',
+      label: 'Systeembeheer',
+      children: [
+        { href: '/popups', label: 'Pop-ups' },
+        { href: '/audit', label: 'Audit' },
+      ],
+    },
+  );
 
   return (
     <div className="min-h-screen lg:grid lg:grid-cols-[240px_1fr]">
@@ -46,7 +82,7 @@ export function AdminShell({ admin, children }: Props) {
             Admin Dashboard
           </p>
         </div>
-        <AdminNav items={items} />
+        <AdminNav entries={entries} />
       </aside>
 
       <div className="flex min-h-screen flex-col bg-brand-mist">

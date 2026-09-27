@@ -30,6 +30,14 @@ export const SUPPORT_CATEGORIES = [
   'Anders',
 ] as const;
 
+export const SUPPORT_SOURCES = [
+  'user',
+  'admin_initiated',
+  'website_converted',
+] as const;
+
+export type SupportSource = (typeof SUPPORT_SOURCES)[number];
+
 export type SupportUserSummary = {
   id: string;
   email: string | null;
@@ -46,6 +54,8 @@ export type SupportMessageRow = {
   priority: boolean;
   status: SupportMessageStatus;
   admin_reply: string | null;
+  /** user | admin_initiated | website_converted */
+  source: SupportSource;
   created_at: string;
   updated_at: string;
   users: SupportUserSummary | null;
@@ -70,16 +80,17 @@ export type SupportConversationMessageRow = {
   created_at: string;
 };
 
+/** App + Web support: read access (content has no support). */
 export function canReadSupport(role: AdminRole): boolean {
-  return (
-    role === 'superadmin' ||
-    role === 'support' ||
-    role === 'content' ||
-    role === 'viewer'
-  );
+  return role === 'superadmin' || role === 'support' || role === 'viewer';
 }
 
 export function canMutateSupport(role: AdminRole): boolean {
+  return role === 'superadmin' || role === 'support';
+}
+
+/** Outreach to users without prior ticket — same as mutate. */
+export function canContactUsers(role: AdminRole): boolean {
   return role === 'superadmin' || role === 'support';
 }
 
@@ -99,4 +110,22 @@ export function isSupportAdminSettableStatus(
     typeof value === 'string' &&
     (SUPPORT_ADMIN_SETTABLE_STATUSES as readonly string[]).includes(value)
   );
+}
+
+export function isSupportSource(value: unknown): value is SupportSource {
+  return (
+    typeof value === 'string' &&
+    (SUPPORT_SOURCES as readonly string[]).includes(value)
+  );
+}
+
+export function supportSourceLabel(source: SupportSource): string {
+  switch (source) {
+    case 'admin_initiated':
+      return 'Social Core';
+    case 'website_converted':
+      return 'Website';
+    default:
+      return 'Gebruiker';
+  }
 }

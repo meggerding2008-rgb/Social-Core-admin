@@ -39,6 +39,12 @@ function mapMessage(raw: Record<string, unknown>): SupportMessageRow | null {
     priority: Boolean(raw.priority),
     status: raw.status,
     admin_reply: typeof raw.admin_reply === 'string' ? raw.admin_reply : null,
+    source:
+      raw.source === 'admin_initiated'
+        ? 'admin_initiated'
+        : raw.source === 'website_converted'
+          ? 'website_converted'
+          : 'user',
     created_at: String(raw.created_at ?? ''),
     updated_at: String(raw.updated_at ?? ''),
     users: mapUser(raw.users),
@@ -62,6 +68,7 @@ export async function listSupportMessages(
       priority,
       status,
       admin_reply,
+      source,
       created_at,
       updated_at,
       users:user_id (
@@ -104,6 +111,36 @@ export async function listSupportMessages(
 
   if (error) {
     console.error('[support] list failed:', error.message);
+    if (error.message.includes('source')) {
+      // Pre-migration: load without source
+      const fallback = await supabase
+        .from('support_messages')
+        .select(
+          `
+          id, user_id, message, subject, category, priority, status,
+          admin_reply, created_at, updated_at,
+          users:user_id ( id, email, name, company )
+        `,
+        )
+        .order('created_at', { ascending: false })
+        .limit(200);
+      if (fallback.error) {
+        return {
+          rows: [],
+          error:
+            'Kolom source ontbreekt. Voer supabase/migrations/20260927_support_admin_outreach.sql uit in Supabase.',
+        };
+      }
+      let rows = (fallback.data ?? [])
+        .map((item) =>
+          mapMessage({ ...(item as Record<string, unknown>), source: 'user' }),
+        )
+        .filter((row): row is SupportMessageRow => row !== null);
+      if (filters.status && filters.status !== 'all') {
+        rows = rows.filter((r) => r.status === filters.status);
+      }
+      return { rows, error: null };
+    }
     return {
       rows: [],
       error: 'Supportvragen konden niet worden geladen.',
@@ -153,6 +190,7 @@ export async function getSupportMessageById(
       priority,
       status,
       admin_reply,
+      source,
       created_at,
       updated_at,
       users:user_id (
@@ -168,6 +206,28 @@ export async function getSupportMessageById(
 
   if (error) {
     console.error('[support] get failed:', error.message);
+    if (error.message.includes('source')) {
+      // Backward-compatible fallback before migration
+      const fallback = await supabase
+        .from('support_messages')
+        .select(
+          `
+          id, user_id, message, subject, category, priority, status,
+          admin_reply, created_at, updated_at,
+          users:user_id ( id, email, name, company )
+        `,
+        )
+        .eq('id', id)
+        .maybeSingle();
+      if (fallback.error || !fallback.data) {
+        return { row: null, error: 'Supportvraag kon niet worden geladen.' };
+      }
+      const mapped = mapMessage({
+        ...(fallback.data as Record<string, unknown>),
+        source: 'user',
+      });
+      return { row: mapped, error: null };
+    }
     return { row: null, error: 'Supportvraag kon niet worden geladen.' };
   }
 
@@ -255,17 +315,30 @@ export async function listConversationMessages(
   };
 }
 
-export async function countOpenSupportMessages(): Promise<number> {
+export async function listUsersForSupportSelect(): Promise<
+  { id: string; label: string }[]
+> {
   const supabase = await createClient();
-  const { count, error } = await supabase
-    .from('support_messages')
-    .select('id', { count: 'exact', head: true })
-    .in('status', ['open', 'in_behandeling'] satisfies SupportMessageStatus[]);
+  const { data, error } = await supabase
+    .from('users')
+    .select('id, name, email, company')
+    .order('created_at', { ascending: false })
+    .limit(500);
 
   if (error) {
-    console.error('[support] count open failed:', error.message);
-    return 0;
+    console.error('[support] users select failed:', error.message);
+    return [];
   }
 
-  return count ?? 0;
+  return (data ?? []).map((u) => {
+    const row = u as {
+      id: string;
+      name?: string | null;
+      email?: string | null;
+      company?: string | null;
+    };
+    const label = [row.name, row.email, row.company].filter(Boolean).join(' · ');
+    return { id: row.id, label: label || row.id };
+  });
 }
+

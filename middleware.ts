@@ -16,6 +16,8 @@ function isPublicPath(pathname: string): boolean {
   if (PUBLIC_PATHS.has(path)) return true;
   // Auth callback may include deeper paths in future
   if (path.startsWith('/auth/callback')) return true;
+  // Base44 inbound webhooks (authenticated via shared secret, not session)
+  if (path.startsWith('/api/webhooks/')) return true;
   return false;
 }
 

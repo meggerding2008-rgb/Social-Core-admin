@@ -73,7 +73,7 @@ export default async function ErrorDetailPage({
               {row.users?.email || row.user_id}
             </Link>
             {' · '}
-            <Link href={`/support?q=${encodeURIComponent(row.users?.email || '')}`} className="text-brand-accent">
+            <Link href={`/app-support?q=${encodeURIComponent(row.users?.email || '')}`} className="text-brand-accent">
               Support zoeken
             </Link>
           </p>
