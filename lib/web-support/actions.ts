@@ -3,11 +3,17 @@
 import { revalidatePath } from 'next/cache';
 import { requireAdmin } from '@/lib/auth/require-admin';
 import { logAdminAction } from '@/lib/audit/log';
+import {
+  isValidEmail,
+  plainTextToHtml,
+  sendBrevoTransactionalEmail,
+} from '@/lib/brevo/client';
 import { AppError, toSafeErrorMessage } from '@/lib/errors/safe-error';
 import { createClient } from '@/lib/supabase/server';
 import { canMutateSupport } from '@/lib/support/types';
 import {
   isWebsiteMessageStatus,
+  replySubjectFromOriginal,
   type WebsiteMessageStatus,
 } from '@/lib/web-support/types';
 
@@ -139,82 +145,158 @@ export async function assignWebsiteMessage(input: {
   }
 }
 
-export async function replyToWebsiteMessage(input: {
+/**
+ * Send an email reply via Brevo, then persist website_message_replies
+ * and mark the parent message as beantwoord.
+ */
+export async function sendWebsiteMessageEmailReply(input: {
   messageId: string;
-  note: string;
-  status?: WebsiteMessageStatus;
-}): Promise<ActionResult> {
+  body: string;
+  /** Client idempotency token to ignore double-clicks */
+  clientRequestId?: string;
+}): Promise<ActionResult & { id?: string }> {
   try {
     const admin = await requireWebSupportMutator();
-    const note = input.note.trim();
-    if (!note) throw new AppError('Vul een notitie of antwoord in.');
-    if (note.length > 10000) throw new AppError('Tekst is te lang.');
-
-    const nextStatus: WebsiteMessageStatus =
-      input.status && isWebsiteMessageStatus(input.status)
-        ? input.status
-        : 'beantwoord';
+    const body = input.body.trim();
+    if (!body) throw new AppError('Vul een antwoord in.');
+    if (body.length > 10000) throw new AppError('Antwoord is te lang.');
 
     const supabase = await createClient();
-    const { data: before, error: beforeError } = await supabase
+    const { data: web, error: webError } = await supabase
       .from('website_messages')
-      .select('id, status, payload, replied_at')
+      .select('id, sender_name, sender_email, subject, status, replied_at')
       .eq('id', input.messageId)
       .maybeSingle();
 
-    if (beforeError || !before) {
+    if (webError || !web) {
       throw new AppError('Websitebericht niet gevonden.');
     }
 
-    const prevPayload =
-      before.payload && typeof before.payload === 'object'
-        ? (before.payload as Record<string, unknown>)
-        : {};
+    const recipient = String(web.sender_email ?? '')
+      .trim()
+      .toLowerCase();
+    if (!isValidEmail(recipient)) {
+      throw new AppError('Het afzender-e-mailadres is ongeldig.');
+    }
+
+    // Soft de-dupe: same admin + message + identical body within 2 minutes
+    const since = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+    const { data: recent } = await supabase
+      .from('website_message_replies')
+      .select('id, message, created_at')
+      .eq('website_message_id', input.messageId)
+      .eq('admin_id', admin.id)
+      .eq('message', body)
+      .gte('created_at', since)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (recent?.id) {
+      return {
+        ok: true,
+        id: recent.id,
+        message: 'Dit antwoord is zojuist al verzonden (dubbele klik genegeerd).',
+      };
+    }
+
+    const subject = replySubjectFromOriginal(
+      typeof web.subject === 'string' ? web.subject : null,
+    );
+
+    const sendResult = await sendBrevoTransactionalEmail({
+      toEmail: recipient,
+      toName: typeof web.sender_name === 'string' ? web.sender_name : undefined,
+      subject,
+      htmlContent: plainTextToHtml(body),
+    });
+
+    if (!sendResult.ok) {
+      throw new AppError(sendResult.error);
+    }
 
     const now = new Date().toISOString();
-    const { error } = await supabase
+
+    const { data: reply, error: replyError } = await supabase
+      .from('website_message_replies')
+      .insert({
+        website_message_id: input.messageId,
+        admin_id: admin.id,
+        message: body,
+        recipient_email: recipient,
+        sent_at: now,
+        delivery_status: 'accepted',
+        created_at: now,
+      })
+      .select('id')
+      .single();
+
+    if (replyError || !reply) {
+      console.error('[web-support] reply insert failed:', replyError?.message);
+      if (
+        replyError?.message?.includes('website_message_replies') ||
+        replyError?.message?.includes('schema cache')
+      ) {
+        throw new AppError(
+          'E-mail is verzonden, maar opslaan mislukte: voer 20260927_website_message_replies.sql uit.',
+        );
+      }
+      throw new AppError(
+        'E-mail is verzonden, maar het antwoord kon niet worden opgeslagen.',
+      );
+    }
+
+    const { error: updateError } = await supabase
       .from('website_messages')
       .update({
-        status: nextStatus,
+        status: 'beantwoord',
         replied_at: now,
         assigned_to: admin.id,
-        payload: {
-          ...prevPayload,
-          admin_notes: [
-            ...((Array.isArray(prevPayload.admin_notes)
-              ? prevPayload.admin_notes
-              : []) as unknown[]),
-            {
-              at: now,
-              by: admin.id,
-              note,
-            },
-          ],
-        },
       })
       .eq('id', input.messageId);
 
-    if (error) {
-      console.error('[web-support] reply failed:', error.message);
-      throw new AppError('Antwoord kon niet worden opgeslagen.');
+    if (updateError) {
+      console.error(
+        '[web-support] status after reply failed:',
+        updateError.message,
+      );
     }
 
     await logAdminAction({
       actorId: admin.id,
-      action: 'web_support.message.reply',
-      resourceType: 'website_messages',
-      resourceId: input.messageId,
-      beforeState: { status: before.status, replied_at: before.replied_at },
-      afterState: { status: nextStatus, replied_at: now },
-      metadata: { noteLength: note.length },
+      action: 'web_support.message.email_reply',
+      resourceType: 'website_message_replies',
+      resourceId: reply.id,
+      beforeState: {
+        website_message_id: input.messageId,
+        status: web.status,
+        replied_at: web.replied_at,
+      },
+      afterState: {
+        status: 'beantwoord',
+        replied_at: now,
+        recipient_email: recipient,
+        delivery_status: 'accepted',
+      },
+      metadata: {
+        websiteMessageId: input.messageId,
+        brevoMessageId: sendResult.messageId,
+        clientRequestId: input.clientRequestId ?? null,
+        subject,
+        bodyLength: body.length,
+      },
     });
 
     revalidateWebSupport(input.messageId);
-    return { ok: true };
+    return {
+      ok: true,
+      id: reply.id,
+      message: `Antwoord verzonden naar ${recipient}.`,
+    };
   } catch (error) {
     return {
       ok: false,
-      error: toSafeErrorMessage(error, 'Antwoord kon niet worden opgeslagen.'),
+      error: toSafeErrorMessage(error, 'Antwoord kon niet worden verzonden.'),
     };
   }
 }

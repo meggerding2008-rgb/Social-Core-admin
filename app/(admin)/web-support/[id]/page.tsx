@@ -6,9 +6,13 @@ import {
 } from '@/lib/auth/require-admin';
 import { canMutateSupport, canReadSupport } from '@/lib/support/types';
 import { formatSupportDateTime } from '@/lib/support/labels';
-import { getWebsiteMessageById } from '@/lib/web-support/queries';
+import {
+  getWebsiteMessageById,
+  listWebsiteMessageReplies,
+} from '@/lib/web-support/queries';
 import { websiteMessageStatusLabel } from '@/lib/web-support/types';
 import { WebSupportActions } from '@/components/web-support/WebSupportActions';
+import { WebSupportReplyHistory } from '@/components/web-support/WebSupportReplyHistory';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,6 +50,9 @@ export default async function WebSupportDetailPage({
   if (!row) notFound();
 
   const canMutate = canMutateSupport(admin.profile.role);
+  const { rows: replies, error: repliesError } = await listWebsiteMessageReplies(
+    row.id,
+  );
 
   return (
     <div className="mx-auto max-w-3xl space-y-5">
@@ -112,6 +119,8 @@ export default async function WebSupportDetailPage({
           </p>
         </div>
       </section>
+
+      <WebSupportReplyHistory rows={replies} error={repliesError} />
 
       <WebSupportActions message={row} canMutate={canMutate} />
     </div>

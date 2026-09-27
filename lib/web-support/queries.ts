@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import {
   isWebsiteMessageStatus,
+  type WebsiteMessageReplyRow,
   type WebsiteMessageRow,
   type WebsiteMessageStatus,
 } from '@/lib/web-support/types';
@@ -171,4 +172,39 @@ export async function countNewWebsiteMessages(): Promise<number> {
     return 0;
   }
   return count ?? 0;
+}
+
+export async function listWebsiteMessageReplies(
+  websiteMessageId: string,
+): Promise<{ rows: WebsiteMessageReplyRow[]; error: string | null }> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from('website_message_replies')
+    .select(
+      'id, website_message_id, admin_id, message, recipient_email, sent_at, delivery_status, created_at',
+    )
+    .eq('website_message_id', websiteMessageId)
+    .order('sent_at', { ascending: true })
+    .limit(200);
+
+  if (error) {
+    console.error('[web-support] replies list failed:', error.message);
+    if (
+      error.message.includes('website_message_replies') ||
+      error.message.includes('schema cache')
+    ) {
+      return {
+        rows: [],
+        error:
+          'Tabel website_message_replies ontbreekt. Voer supabase/migrations/20260927_website_message_replies.sql uit.',
+      };
+    }
+    return { rows: [], error: 'Antwoordgeschiedenis kon niet worden geladen.' };
+  }
+
+  return {
+    rows: (data ?? []) as WebsiteMessageReplyRow[],
+    error: null,
+  };
 }

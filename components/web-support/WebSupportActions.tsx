@@ -1,15 +1,16 @@
 'use client';
 
-import { FormEvent, useState, useTransition } from 'react';
+import { FormEvent, useId, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   assignWebsiteMessage,
   convertWebsiteMessageToAppTicket,
-  replyToWebsiteMessage,
+  sendWebsiteMessageEmailReply,
   updateWebsiteMessageStatus,
 } from '@/lib/web-support/actions';
 import {
   WEBSITE_MESSAGE_STATUSES,
+  replySubjectFromOriginal,
   websiteMessageStatusLabel,
   type WebsiteMessageRow,
   type WebsiteMessageStatus,
@@ -28,8 +29,15 @@ export function WebSupportActions({ message, canMutate }: Props) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [note, setNote] = useState('');
+  const [replyBody, setReplyBody] = useState('');
   const [status, setStatus] = useState<WebsiteMessageStatus>(message.status);
+  const submittedRef = useRef(false);
+  const requestIdRef = useRef(
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `req-${Date.now()}`,
+  );
+  const formId = useId();
 
   if (!canMutate) {
     return (
@@ -40,7 +48,12 @@ export function WebSupportActions({ message, canMutate }: Props) {
   }
 
   function run(
-    action: () => Promise<{ ok: boolean; error?: string; id?: string; message?: string }>,
+    action: () => Promise<{
+      ok: boolean;
+      error?: string;
+      id?: string;
+      message?: string;
+    }>,
     onOk?: (result: { id?: string; message?: string }) => void,
   ) {
     setError(null);
@@ -48,6 +61,7 @@ export function WebSupportActions({ message, canMutate }: Props) {
     startTransition(async () => {
       const result = await action();
       if (!result.ok) {
+        submittedRef.current = false;
         setError(result.error ?? 'Actie mislukt.');
         return;
       }
@@ -67,16 +81,29 @@ export function WebSupportActions({ message, canMutate }: Props) {
     );
   }
 
-  function onReply(event: FormEvent) {
+  function onEmailReply(event: FormEvent) {
     event.preventDefault();
-    run(() =>
-      replyToWebsiteMessage({
-        messageId: message.id,
-        note,
-        status: 'beantwoord',
-      }),
+    if (pending || submittedRef.current) return;
+    submittedRef.current = true;
+    run(
+      () =>
+        sendWebsiteMessageEmailReply({
+          messageId: message.id,
+          body: replyBody,
+          clientRequestId: requestIdRef.current,
+        }),
+      () => {
+        setReplyBody('');
+        requestIdRef.current =
+          typeof crypto !== 'undefined' && 'randomUUID' in crypto
+            ? crypto.randomUUID()
+            : `req-${Date.now()}`;
+        submittedRef.current = false;
+      },
     );
   }
+
+  const replySubject = replySubjectFromOriginal(message.subject);
 
   return (
     <div className="space-y-4 rounded-card border border-brand-border bg-brand-white p-5">
@@ -161,23 +188,36 @@ export function WebSupportActions({ message, canMutate }: Props) {
         </button>
       </form>
 
-      <form onSubmit={onReply} className="space-y-2">
+      <form id={formId} onSubmit={onEmailReply} className="space-y-3 border-t border-brand-border pt-4">
+        <div>
+          <h3 className="text-sm font-semibold text-brand-navy">
+            Antwoord per e-mail (Brevo)
+          </h3>
+          <p className="mt-1 text-xs text-brand-accent">
+            Van Social Core &lt;info@socialcore.nl&gt; naar{' '}
+            <span className="font-medium text-brand-navy">
+              {message.sender_email}
+            </span>
+            . Onderwerp: {replySubject}
+          </p>
+        </div>
         <label className="block text-xs font-medium text-brand-navy">
-          Interne notitie / antwoord (geen e-mail)
+          Antwoord
           <textarea
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            rows={4}
+            value={replyBody}
+            onChange={(e) => setReplyBody(e.target.value)}
+            rows={6}
+            required
             className={field}
-            placeholder="Noteer hoe dit bericht is afgehandeld…"
+            placeholder="Schrijf je antwoord aan de afzender…"
           />
         </label>
         <button
           type="submit"
-          disabled={pending}
+          disabled={pending || !replyBody.trim()}
           className="rounded-[10px] border border-brand-navy bg-brand-navy px-4 py-2 text-sm font-medium text-brand-white transition hover:border-brand-accent hover:bg-brand-accent disabled:opacity-60"
         >
-          Markeer als beantwoord
+          {pending ? 'Verzenden…' : 'Verstuur antwoord'}
         </button>
       </form>
     </div>

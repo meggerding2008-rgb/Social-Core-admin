@@ -30,6 +30,17 @@ export type WebsiteMessageRow = {
   } | null;
 };
 
+export type WebsiteMessageReplyRow = {
+  id: string;
+  website_message_id: string;
+  admin_id: string;
+  message: string;
+  recipient_email: string;
+  sent_at: string;
+  delivery_status: string;
+  created_at: string;
+};
+
 export function isWebsiteMessageStatus(
   value: unknown,
 ): value is WebsiteMessageStatus {
@@ -52,4 +63,10 @@ export function websiteMessageStatusLabel(status: WebsiteMessageStatus): string 
     default:
       return status;
   }
+}
+
+export function replySubjectFromOriginal(subject: string | null): string {
+  const base = subject?.trim() || 'Uw bericht aan Social Core';
+  if (/^re:\s/i.test(base)) return base;
+  return `Re: ${base}`;
 }
