@@ -1,4 +1,5 @@
 import type { AdminRole } from '@/lib/auth/types';
+import { canManageUsers, canViewUsers } from '@/lib/auth/permissions';
 
 export const ACCOUNT_STATUSES = ['active', 'blocked'] as const;
 export type AccountStatus = (typeof ACCOUNT_STATUSES)[number];
@@ -86,17 +87,12 @@ export type RecentSupportRow = {
 };
 
 export function canReadUsers(role: AdminRole): boolean {
-  return (
-    role === 'superadmin' ||
-    role === 'support' ||
-    role === 'content' ||
-    role === 'viewer'
-  );
+  return canViewUsers(role);
 }
 
 /** Block / activate / profile edit / password reset — superadmin only. */
 export function canMutateUsers(role: AdminRole): boolean {
-  return role === 'superadmin';
+  return canManageUsers(role);
 }
 
 export function isAccountStatus(value: unknown): value is AccountStatus {

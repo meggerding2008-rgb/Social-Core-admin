@@ -1,6 +1,8 @@
 import Image from 'next/image';
 import { SignOutButton } from '@/components/auth/SignOutButton';
 import { AdminNav, type NavEntry } from '@/components/layout/AdminNav';
+import { AdminUserSearch } from '@/components/users/AdminUserSearch';
+import { canViewUsers } from '@/lib/auth/permissions';
 import type { AdminUser } from '@/lib/auth/types';
 import { getSupportBadgeCounts } from '@/lib/nav/badges';
 import { canReadSupport } from '@/lib/support/types';
@@ -13,6 +15,7 @@ type Props = {
 export async function AdminShell({ admin, children }: Props) {
   const role = admin.profile.role;
   const showSupport = canReadSupport(role);
+  const showUserSearch = canViewUsers(role);
   const badges = showSupport
     ? await getSupportBadgeCounts(role)
     : { appSupport: 0, webSupport: 0 };
@@ -86,7 +89,7 @@ export async function AdminShell({ admin, children }: Props) {
       </aside>
 
       <div className="flex min-h-screen flex-col bg-brand-mist">
-        <header className="flex items-center justify-between gap-4 border-b border-brand-border bg-brand-white px-5 py-4">
+        <header className="flex flex-wrap items-center justify-between gap-4 border-b border-brand-border bg-brand-white px-5 py-4">
           <div className="min-w-0">
             <p className="truncate text-sm font-medium text-brand-navy">
               {admin.fullName}
@@ -98,7 +101,10 @@ export async function AdminShell({ admin, children }: Props) {
                 : ' · JWT-claim ontbreekt (opnieuw inloggen)'}
             </p>
           </div>
-          <SignOutButton />
+          <div className="flex flex-1 flex-wrap items-center justify-end gap-3">
+            {showUserSearch ? <AdminUserSearch /> : null}
+            <SignOutButton />
+          </div>
         </header>
         <main className="flex-1 px-5 py-6">{children}</main>
       </div>

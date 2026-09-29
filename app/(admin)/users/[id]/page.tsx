@@ -4,9 +4,13 @@ import {
   ForbiddenAdminError,
   requireAdmin,
 } from '@/lib/auth/require-admin';
-import { canMutateUsers, canReadUsers } from '@/lib/users/types';
-import { canContactUsers, isSupportMessageStatus } from '@/lib/support/types';
-import { canMutateReviews } from '@/lib/reviews/types';
+import {
+  canManageReviews,
+  canManageSupport,
+  canManageUsers,
+  canViewUsers,
+} from '@/lib/auth/permissions';
+import { isSupportMessageStatus } from '@/lib/support/types';
 import {
   getUserProfile,
   getUserSubscription,
@@ -26,7 +30,6 @@ import {
   subscriptionStatusLabel,
 } from '@/lib/users/types';
 import { formatSupportDateTime } from '@/lib/support/labels';
-import { AccountStatusBadge } from '@/components/users/AccountStatusBadge';
 import { UserAdminActions } from '@/components/users/UserAdminActions';
 import { StatusBadge } from '@/components/support/StatusBadge';
 
@@ -42,84 +45,72 @@ function usageLine(
   return `${label}: ${u} / ${lim}`;
 }
 
-export default async function UserDetailPage({
+export default async function UserOverviewPage({
   params,
 }: {
   params: { id: string };
 }) {
   const admin = await requireAdmin();
-  if (!canReadUsers(admin.profile.role)) {
+  if (!canViewUsers(admin.profile.role)) {
     throw new ForbiddenAdminError();
   }
 
   const { row: user, error } = await getUserProfile(params.id);
-
   if (error) {
     return (
-      <div className="mx-auto max-w-3xl space-y-4">
-        <div
-          className="rounded-card border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
-          role="alert"
-        >
-          {error}
-        </div>
-        <Link href="/users" className="text-sm font-medium text-brand-navy">
-          ← Terug naar gebruikers
-        </Link>
+      <div
+        className="rounded-card border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+        role="alert"
+      >
+        {error}
       </div>
     );
   }
-
   if (!user) notFound();
 
-  const [subscriptionResult, usageResult, postsResult, supportResult, schedule, reviewsResult] =
-    await Promise.all([
-      getUserSubscription(user.id),
-      getUserUsageCurrentMonth(user.id),
-      listRecentPostsForUser(user.id),
-      listRecentSupportForUser(user.id),
-      getUserReviewSchedule(user.id),
-      listContentReviews({ userId: user.id }),
-    ]);
+  const [
+    subscriptionResult,
+    usageResult,
+    postsResult,
+    supportResult,
+    schedule,
+    reviewsResult,
+  ] = await Promise.all([
+    getUserSubscription(user.id),
+    getUserUsageCurrentMonth(user.id),
+    listRecentPostsForUser(user.id),
+    listRecentSupportForUser(user.id),
+    getUserReviewSchedule(user.id),
+    listContentReviews({ userId: user.id }),
+  ]);
 
-  const canMutate = canMutateUsers(admin.profile.role);
-  const canReview = canMutateReviews(admin.profile.role);
-  const canContact = canContactUsers(admin.profile.role);
+  const canMutate = canManageUsers(admin.profile.role);
+  const canReview = canManageReviews(admin.profile.role);
+  const canContact = canManageSupport(admin.profile.role);
   const subscription = subscriptionResult.row;
   const usage = usageResult.row;
 
   return (
-    <div className="mx-auto max-w-4xl space-y-5">
-      <div>
-        <Link
-          href="/users"
-          className="text-sm font-medium text-brand-accent hover:text-brand-navy"
-        >
-          ← Terug naar gebruikers
-        </Link>
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-semibold tracking-tight text-brand-navy">
-                {user.name?.trim() || user.email || 'Gebruiker'}
-              </h1>
-              <AccountStatusBadge status={user.account_status} />
-            </div>
-            <p className="mt-1 text-sm text-brand-accent">{user.email}</p>
-          </div>
-          {canContact ? (
-            <Link
-              href={`/app-support/new?userId=${user.id}`}
-              className="rounded-[10px] border border-brand-navy bg-brand-navy px-4 py-2 text-sm font-medium text-white hover:bg-brand-accent"
-            >
-              Nieuw bericht aan gebruiker
-            </Link>
-          ) : null}
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-semibold text-brand-navy">Overzicht</h2>
+          <p className="text-sm text-brand-accent">
+            Samenvatting van account, abonnement, gebruik en recente activiteit.
+          </p>
         </div>
+        {canContact ? (
+          <Link
+            href={`/app-support/new?userId=${user.id}`}
+            className="rounded-[10px] border border-brand-navy bg-brand-navy px-4 py-2 text-sm font-medium text-white hover:bg-brand-accent"
+          >
+            Nieuw bericht aan gebruiker
+          </Link>
+        ) : null}
       </div>
 
       <section className="rounded-card border border-brand-border bg-brand-white p-5">
-        <h2 className="text-sm font-semibold text-brand-navy">Profiel</h2>
+        <h3 className="text-sm font-semibold text-brand-navy">Profiel</h3>
         <dl className="mt-3 grid gap-3 sm:grid-cols-2">
           <div>
             <dt className="text-xs uppercase tracking-wide text-brand-accent">
@@ -167,9 +158,7 @@ export default async function UserDetailPage({
             </dt>
             <dd className="text-sm text-brand-navy">
               {accountStatusLabel(user.account_status)}
-              {user.blocked_reason
-                ? ` — ${user.blocked_reason}`
-                : ''}
+              {user.blocked_reason ? ` — ${user.blocked_reason}` : ''}
             </dd>
           </div>
           <div>
@@ -189,7 +178,15 @@ export default async function UserDetailPage({
       </section>
 
       <section className="rounded-card border border-brand-border bg-brand-white p-5">
-        <h2 className="text-sm font-semibold text-brand-navy">Abonnement</h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-sm font-semibold text-brand-navy">Abonnement</h3>
+          <Link
+            href={`/users/${user.id}/billing`}
+            className="text-xs font-medium text-brand-navy hover:text-brand-accent"
+          >
+            Naar betalingen →
+          </Link>
+        </div>
         {subscriptionResult.error ? (
           <p className="mt-2 text-sm text-red-700">{subscriptionResult.error}</p>
         ) : subscription ? (
@@ -238,9 +235,9 @@ export default async function UserDetailPage({
 
       <section className="rounded-card border border-brand-border bg-brand-white p-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-sm font-semibold text-brand-navy">
+          <h3 className="text-sm font-semibold text-brand-navy">
             Periodieke contentreviews
-          </h2>
+          </h3>
           {canReview ? (
             <Link
               href={`/reviews/new?userId=${user.id}`}
@@ -288,7 +285,10 @@ export default async function UserDetailPage({
         {reviewsResult.rows.length > 0 ? (
           <ul className="mt-4 divide-y divide-brand-border border-t border-brand-border">
             {reviewsResult.rows.slice(0, 5).map((r) => (
-              <li key={r.id} className="flex items-center justify-between gap-2 py-2">
+              <li
+                key={r.id}
+                className="flex items-center justify-between gap-2 py-2"
+              >
                 <Link
                   href={`/reviews/${r.id}`}
                   className="truncate text-sm text-brand-navy hover:text-brand-accent"
@@ -305,9 +305,17 @@ export default async function UserDetailPage({
       </section>
 
       <section className="rounded-card border border-brand-border bg-brand-white p-5">
-        <h2 className="text-sm font-semibold text-brand-navy">
-          Gebruik (huidige maand)
-        </h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-sm font-semibold text-brand-navy">
+            Gebruik (huidige maand)
+          </h3>
+          <Link
+            href={`/users/${user.id}/usage`}
+            className="text-xs font-medium text-brand-navy hover:text-brand-accent"
+          >
+            Naar verbruik →
+          </Link>
+        </div>
         {usageResult.error ? (
           <p className="mt-2 text-sm text-red-700">{usageResult.error}</p>
         ) : usage ? (
@@ -344,7 +352,15 @@ export default async function UserDetailPage({
       </section>
 
       <section className="rounded-card border border-brand-border bg-brand-white p-5">
-        <h2 className="text-sm font-semibold text-brand-navy">Recente posts</h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-sm font-semibold text-brand-navy">Recente posts</h3>
+          <Link
+            href={`/users/${user.id}/posts`}
+            className="text-xs font-medium text-brand-navy hover:text-brand-accent"
+          >
+            Alle posts →
+          </Link>
+        </div>
         {postsResult.error ? (
           <p className="mt-2 text-sm text-red-700">{postsResult.error}</p>
         ) : postsResult.rows.length === 0 ? (
@@ -352,13 +368,17 @@ export default async function UserDetailPage({
         ) : (
           <ul className="mt-3 divide-y divide-brand-border">
             {postsResult.rows.map((post) => (
-              <li key={post.id} className="flex items-center justify-between gap-3 py-2">
+              <li
+                key={post.id}
+                className="flex items-center justify-between gap-3 py-2"
+              >
                 <div className="min-w-0">
                   <p className="truncate text-sm text-brand-navy">
                     {post.title || 'Zonder titel'}
                   </p>
                   <p className="text-xs text-brand-accent">
-                    {post.status || '—'} · {formatSupportDateTime(post.created_at)}
+                    {post.status || '—'} ·{' '}
+                    {formatSupportDateTime(post.created_at)}
                   </p>
                 </div>
               </li>
@@ -368,9 +388,17 @@ export default async function UserDetailPage({
       </section>
 
       <section className="rounded-card border border-brand-border bg-brand-white p-5">
-        <h2 className="text-sm font-semibold text-brand-navy">
-          Supporttickets
-        </h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-sm font-semibold text-brand-navy">
+            Supporttickets
+          </h3>
+          <Link
+            href={`/users/${user.id}/support`}
+            className="text-xs font-medium text-brand-navy hover:text-brand-accent"
+          >
+            Alle support →
+          </Link>
+        </div>
         {supportResult.error ? (
           <p className="mt-2 text-sm text-red-700">{supportResult.error}</p>
         ) : supportResult.rows.length === 0 ? (
