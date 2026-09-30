@@ -1,6 +1,10 @@
 import { createClient } from '@/lib/supabase/server';
 import { listUsersNeedingReviews } from '@/lib/reviews/queries';
 import { getPopupDashboardCounts } from '@/lib/popups/queries';
+import {
+  countFailedPublications,
+  countPostsAwaitingAction,
+} from '@/lib/user-posts/queries';
 
 export type DashboardCard = {
   label: string;
@@ -107,6 +111,10 @@ export async function getDashboardData(): Promise<{
     lastMetricsAt,
     lastTrendAt,
     lastPublishedPostAt,
+    postsAwaiting,
+    failedPubs,
+    openInvites,
+    failedPayments,
   ] = await Promise.all([
     countOrZero(
       supabase.from('users').select('id', { count: 'exact', head: true }),
@@ -209,6 +217,21 @@ export async function getDashboardData(): Promise<{
         .limit(1)
         .maybeSingle();
     }, 'published_at'),
+    countPostsAwaitingAction(),
+    countFailedPublications(),
+    countOrZero(
+      supabase
+        .from('team_invitations')
+        .select('id', { count: 'exact', head: true })
+        .is('accepted_at', null)
+        .gt('expires_at', nowIso),
+    ),
+    countOrZero(
+      supabase
+        .from('subscriptions')
+        .select('id', { count: 'exact', head: true })
+        .in('status', ['past_due', 'unpaid', 'incomplete']),
+    ),
   ]);
 
   const userCards: DashboardCard[] = [
@@ -229,6 +252,16 @@ export async function getDashboardData(): Promise<{
 
   const opsCards: DashboardCard[] = [
     {
+      label: 'Nieuwe gebruikers (maand)',
+      value: newUsersMonth,
+      href: '/users',
+    },
+    {
+      label: 'Actieve abonnementen',
+      value: activeSubs,
+      href: '/users',
+    },
+    {
       label: 'Openstaande App support',
       value: openSupport,
       href: '/app-support?status=open',
@@ -244,6 +277,17 @@ export async function getDashboardData(): Promise<{
       href: '/errors?status=open',
     },
     {
+      label: 'Posts die actie vragen',
+      value: postsAwaiting,
+      href: '/users',
+      hint: 'concept of goedgekeurd',
+    },
+    {
+      label: 'Mislukte publicaties',
+      value: failedPubs,
+      href: '/users',
+    },
+    {
       label: 'Reviews gepland',
       value: plannedReviews,
       href: '/reviews?status=gepland',
@@ -253,6 +297,17 @@ export async function getDashboardData(): Promise<{
       value: reviewsToMake,
       href: '/reviews',
       hint: `${dueUsers.length} overdue of binnen 14 dagen`,
+    },
+    {
+      label: 'Openstaande teamuitnodigingen',
+      value: openInvites,
+      href: '/users',
+    },
+    {
+      label: 'Mislukte betalingen',
+      value: failedPayments,
+      href: '/users',
+      hint: 'past_due / unpaid / incomplete',
     },
     {
       label: 'Openstaande pop-ups',
@@ -329,6 +384,36 @@ export async function getDashboardData(): Promise<{
       meta: `Web support · ${r.sender_name || 'onbekend'}`,
       href: `/web-support/${r.id}`,
       urgency: 'high',
+    });
+  }
+
+  if (failedPubs > 0) {
+    actions.push({
+      id: 'failed-pubs',
+      title: `${failedPubs} post(s) met publicatiefout`,
+      meta: 'Controleer per gebruiker onder Posts',
+      href: '/users',
+      urgency: 'high',
+    });
+  }
+
+  if (failedPayments > 0) {
+    actions.push({
+      id: 'failed-payments',
+      title: `${failedPayments} abonnement(en) met betaalprobleem`,
+      meta: 'past_due / unpaid / incomplete',
+      href: '/users',
+      urgency: 'high',
+    });
+  }
+
+  if (openInvites > 0) {
+    actions.push({
+      id: 'open-invites',
+      title: `${openInvites} openstaande teamuitnodiging(en)`,
+      meta: 'Nog niet geaccepteerd',
+      href: '/users',
+      urgency: 'medium',
     });
   }
 

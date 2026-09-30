@@ -72,6 +72,40 @@ const SELECT_FIELDS = `
   )
 `;
 
+export async function listWebsiteMessagesForUser(input: {
+  userId: string;
+  email?: string | null;
+  limit?: number;
+}): Promise<{ rows: WebsiteMessageRow[]; error: string | null }> {
+  const supabase = await createClient();
+  const limit = input.limit ?? 100;
+  const email = input.email?.trim().toLowerCase();
+
+  let query = supabase
+    .from('website_messages')
+    .select(SELECT_FIELDS)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (email) {
+    query = query.or(`user_id.eq.${input.userId},sender_email.eq.${email}`);
+  } else {
+    query = query.eq('user_id', input.userId);
+  }
+
+  const { data, error } = await query;
+  if (error) {
+    console.error('[web-support] user list failed:', error.message);
+    return { rows: [], error: 'Websiteberichten konden niet worden geladen.' };
+  }
+
+  const rows = (data ?? [])
+    .map((item) => mapRow(item as Record<string, unknown>))
+    .filter((row): row is WebsiteMessageRow => row !== null);
+
+  return { rows, error: null };
+}
+
 export async function listWebsiteMessages(
   filters: WebSupportListFilters,
 ): Promise<{ rows: WebsiteMessageRow[]; error: string | null }> {

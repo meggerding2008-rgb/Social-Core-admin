@@ -4,6 +4,7 @@ import { AdminNav, type NavEntry } from '@/components/layout/AdminNav';
 import { AdminUserSearch } from '@/components/users/AdminUserSearch';
 import { canViewUsers } from '@/lib/auth/permissions';
 import type { AdminUser } from '@/lib/auth/types';
+import { canReadCms } from '@/lib/content/types';
 import { getSupportBadgeCounts } from '@/lib/nav/badges';
 import { canReadSupport } from '@/lib/support/types';
 
@@ -16,6 +17,7 @@ export async function AdminShell({ admin, children }: Props) {
   const role = admin.profile.role;
   const showSupport = canReadSupport(role);
   const showUserSearch = canViewUsers(role);
+  const showCms = canReadCms(role);
   const badges = showSupport
     ? await getSupportBadgeCounts(role)
     : { appSupport: 0, webSupport: 0 };
@@ -41,10 +43,13 @@ export async function AdminShell({ admin, children }: Props) {
     );
   }
 
-  entries.push(
-    { type: 'link', href: '/reviews', label: 'Reviews' },
-    { type: 'link', href: '/errors', label: 'Fouten' },
-  );
+  entries.push({ type: 'link', href: '/reviews', label: 'Reviews' });
+
+  if (showCms) {
+    entries.push({ type: 'link', href: '/content', label: 'Content' });
+  }
+
+  entries.push({ type: 'link', href: '/errors', label: 'Fouten' });
 
   const accountsChildren: { href: string; label: string }[] = [
     { href: '/users', label: 'Gebruikers' },

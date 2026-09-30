@@ -37,7 +37,7 @@ export type UserDetailTab = {
   label: string;
   href: (userId: string) => string;
   canView: (role: AdminRole) => boolean;
-  /** Implementation phase (1 = live overview, later = placeholder until built) */
+  /** Implementation phase marker (all tabs live) */
   phase: number;
 };
 

@@ -58,6 +58,45 @@ export async function listAuditLogs(
   return { rows: (data as AuditLogRow[]) ?? [], error: null };
 }
 
+export async function listAuditLogsForUser(
+  userId: string,
+  limit = 150,
+): Promise<{ rows: AuditLogRow[]; error: string | null }> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('admin_audit_logs')
+    .select(
+      'id, actor_id, action, resource_type, resource_id, before_state, after_state, metadata, created_at',
+    )
+    .or(`resource_id.eq.${userId},action.ilike.user.%`)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    console.error('[audit] user list failed:', error.message);
+    return { rows: [], error: 'Activiteit kon niet worden geladen.' };
+  }
+
+  let rows = (data as AuditLogRow[]) ?? [];
+
+  rows = rows.filter((row) => {
+    if (row.resource_id === userId) return true;
+    if (row.action.startsWith('user.')) return true;
+    if (row.resource_type === 'posts') {
+      const after = row.after_state;
+      if (after && typeof after === 'object') {
+        const uid = (after as Record<string, unknown>).user_id;
+        if (uid === userId) return true;
+      }
+      const meta = row.metadata;
+      if (meta?.userId === userId) return true;
+    }
+    return false;
+  });
+
+  return { rows, error: null };
+}
+
 export type AdminListRow = {
   user_id: string;
   role: AdminRole;

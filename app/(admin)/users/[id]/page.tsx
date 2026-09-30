@@ -5,6 +5,7 @@ import {
   requireAdmin,
 } from '@/lib/auth/require-admin';
 import {
+  canImpersonate,
   canManageReviews,
   canManageSupport,
   canManageUsers,
@@ -31,6 +32,7 @@ import {
 } from '@/lib/users/types';
 import { formatSupportDateTime } from '@/lib/support/labels';
 import { UserAdminActions } from '@/components/users/UserAdminActions';
+import { ImpersonationButton } from '@/components/users/ImpersonationButton';
 import { StatusBadge } from '@/components/support/StatusBadge';
 
 export const dynamic = 'force-dynamic';
@@ -433,6 +435,10 @@ export default async function UserOverviewPage({
         )}
       </section>
 
+      <ImpersonationButton
+        userId={user.id}
+        canImpersonate={canImpersonate(admin.profile.role)}
+      />
       <UserAdminActions user={user} canMutate={canMutate} />
     </div>
   );

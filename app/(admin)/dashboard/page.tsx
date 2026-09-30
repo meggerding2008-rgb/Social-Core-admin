@@ -76,7 +76,7 @@ export default async function DashboardPage() {
         <div className="rounded-card border border-brand-border bg-brand-white/60 p-4 space-y-4">
           <CardGrid
             cards={opsCards}
-            columns="sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6"
+            columns="sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
           />
           <div className="border-t border-brand-border pt-4">
             <p className="mb-3 text-xs font-medium uppercase tracking-wide text-brand-accent">

@@ -221,11 +221,70 @@ export async function updateUserProfileFields(input: {
     });
 
     revalidateUserPaths(input.userId);
+    revalidatePath(`/users/${input.userId}/profile-settings`);
     return { ok: true, message: 'Gegevens opgeslagen.' };
   } catch (error) {
     return {
       ok: false,
       error: toSafeErrorMessage(error, 'Gegevens konden niet worden opgeslagen.'),
+    };
+  }
+}
+
+export async function updateUserProfileExtended(input: {
+  userId: string;
+  website: string;
+  language: string;
+  timezone: string;
+  onboarding_completed: boolean;
+}): Promise<ActionResult> {
+  try {
+    const admin = await requireUserMutator();
+    const supabase = await createClient();
+
+    const { data: before, error: beforeError } = await supabase
+      .from('users')
+      .select('id, website, language, timezone, onboarding_completed')
+      .eq('id', input.userId)
+      .maybeSingle();
+
+    if (beforeError || !before) {
+      throw new AppError('Gebruiker niet gevonden.');
+    }
+
+    const updates = {
+      website: input.website.trim() || null,
+      language: input.language.trim() || null,
+      timezone: input.timezone.trim() || null,
+      onboarding_completed: input.onboarding_completed,
+    };
+
+    const { error } = await supabase
+      .from('users')
+      .update(updates)
+      .eq('id', input.userId);
+
+    if (error) {
+      console.error('[users] extended profile failed:', error.message);
+      throw new AppError('Profiel kon niet worden bijgewerkt.');
+    }
+
+    await logAdminAction({
+      actorId: admin.id,
+      action: 'user.profile.extended_update',
+      resourceType: 'users',
+      resourceId: input.userId,
+      beforeState: before,
+      afterState: updates,
+    });
+
+    revalidateUserPaths(input.userId);
+    revalidatePath(`/users/${input.userId}/profile-settings`);
+    return { ok: true, message: 'Profielinstellingen opgeslagen.' };
+  } catch (error) {
+    return {
+      ok: false,
+      error: toSafeErrorMessage(error, 'Profiel kon niet worden bijgewerkt.'),
     };
   }
 }
