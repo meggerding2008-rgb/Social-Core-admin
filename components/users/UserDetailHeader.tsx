@@ -2,11 +2,11 @@ import Link from 'next/link';
 import type { UserProfileRow } from '@/lib/users/types';
 import { AccountStatusBadge } from '@/components/users/AccountStatusBadge';
 import { UserDetailTabs } from '@/components/users/UserDetailTabs';
-import type { UserDetailTab } from '@/lib/users/tabs';
+import type { UserDetailNavTab } from '@/lib/users/tabs';
 
 type Props = {
   user: UserProfileRow;
-  tabs: UserDetailTab[];
+  tabs: UserDetailNavTab[];
   children: React.ReactNode;
 };
 
@@ -30,7 +30,7 @@ export function UserDetailHeader({ user, tabs, children }: Props) {
               </h1>
               <AccountStatusBadge status={user.account_status} />
             </div>
-            <p className="mt-1 text-sm text-brand-accent">{user.email}</p>
+            <p className="mt-1 text-sm text-brand-accent">{user.email || '—'}</p>
             {user.company ? (
               <p className="text-xs text-brand-accent">{user.company}</p>
             ) : null}
@@ -42,7 +42,7 @@ export function UserDetailHeader({ user, tabs, children }: Props) {
       </div>
 
       <div className="rounded-card border border-brand-border bg-brand-white px-2 py-2 sm:px-3">
-        <UserDetailTabs userId={user.id} tabs={tabs} />
+        <UserDetailTabs tabs={tabs} />
       </div>
 
       {children}

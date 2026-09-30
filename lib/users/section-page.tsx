@@ -28,7 +28,7 @@ export async function renderUserSectionPlaceholder(input: {
     <UserSectionPlaceholder
       userId={user.id}
       title={tab.label}
-      phase={tab.phase}
+      phase={0}
     />
   );
 }

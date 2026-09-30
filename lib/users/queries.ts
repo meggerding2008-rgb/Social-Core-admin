@@ -129,77 +129,88 @@ export async function listUsers(
 export async function getUserProfile(
   userId: string,
 ): Promise<{ row: UserProfileRow | null; error: string | null }> {
-  const supabase = await createClient();
+  try {
+    const supabase = await createClient();
 
-  const { data, error } = await supabase
-    .from('users')
-    .select(
-      `
-      id,
-      email,
-      name,
-      company,
-      subscription_tier,
-      account_status,
-      created_at,
-      phone,
-      job_title,
-      website,
-      industry,
-      description,
-      language,
-      timezone,
-      onboarding_completed,
-      avatar_url,
-      blocked_at,
-      blocked_reason
-    `,
-    )
-    .eq('id', userId)
-    .maybeSingle();
+    const { data, error } = await supabase
+      .from('users')
+      .select(
+        `
+        id,
+        email,
+        name,
+        company,
+        subscription_tier,
+        account_status,
+        created_at,
+        phone,
+        job_title,
+        website,
+        industry,
+        description,
+        language,
+        timezone,
+        onboarding_completed,
+        avatar_url,
+        blocked_at,
+        blocked_reason
+      `,
+      )
+      .eq('id', userId)
+      .maybeSingle();
 
-  if (error) {
-    console.error('[users] get failed:', error.message);
-    if (error.message.includes('account_status')) {
-      return {
-        row: null,
-        error:
-          'Kolom account_status ontbreekt. Voer de fase-3 SQL-migratie uit in Supabase.',
-      };
+    if (error) {
+      console.error('[users] get failed:', error.message);
+      if (error.message.includes('account_status')) {
+        return {
+          row: null,
+          error:
+            'Kolom account_status ontbreekt. Voer de fase-3 SQL-migratie uit in Supabase.',
+        };
+      }
+      return { row: null, error: 'Gebruiker kon niet worden geladen.' };
     }
+
+    if (!data) return { row: null, error: null };
+
+    const raw = data as Record<string, unknown>;
+    return {
+      row: {
+        id: String(raw.id),
+        email: typeof raw.email === 'string' ? raw.email : null,
+        name: typeof raw.name === 'string' ? raw.name : null,
+        company: typeof raw.company === 'string' ? raw.company : null,
+        subscription_tier:
+          typeof raw.subscription_tier === 'string'
+            ? raw.subscription_tier
+            : null,
+        account_status: isAccountStatus(raw.account_status)
+          ? raw.account_status
+          : 'active',
+        created_at: String(raw.created_at ?? ''),
+        phone: typeof raw.phone === 'string' ? raw.phone : null,
+        job_title: typeof raw.job_title === 'string' ? raw.job_title : null,
+        website: typeof raw.website === 'string' ? raw.website : null,
+        industry: typeof raw.industry === 'string' ? raw.industry : null,
+        description:
+          typeof raw.description === 'string' ? raw.description : null,
+        language: typeof raw.language === 'string' ? raw.language : null,
+        timezone: typeof raw.timezone === 'string' ? raw.timezone : null,
+        onboarding_completed: raw.onboarding_completed === true,
+        avatar_url: typeof raw.avatar_url === 'string' ? raw.avatar_url : null,
+        blocked_at: typeof raw.blocked_at === 'string' ? raw.blocked_at : null,
+        blocked_reason:
+          typeof raw.blocked_reason === 'string' ? raw.blocked_reason : null,
+      },
+      error: null,
+    };
+  } catch (err) {
+    console.error(
+      '[users] get unexpected:',
+      err instanceof Error ? err.message : 'unknown',
+    );
     return { row: null, error: 'Gebruiker kon niet worden geladen.' };
   }
-
-  if (!data) return { row: null, error: null };
-
-  const raw = data as Record<string, unknown>;
-  return {
-    row: {
-      id: String(raw.id),
-      email: typeof raw.email === 'string' ? raw.email : null,
-      name: typeof raw.name === 'string' ? raw.name : null,
-      company: typeof raw.company === 'string' ? raw.company : null,
-      subscription_tier:
-        typeof raw.subscription_tier === 'string' ? raw.subscription_tier : null,
-      account_status: isAccountStatus(raw.account_status)
-        ? raw.account_status
-        : 'active',
-      created_at: String(raw.created_at ?? ''),
-      phone: typeof raw.phone === 'string' ? raw.phone : null,
-      job_title: typeof raw.job_title === 'string' ? raw.job_title : null,
-      website: typeof raw.website === 'string' ? raw.website : null,
-      industry: typeof raw.industry === 'string' ? raw.industry : null,
-      description: typeof raw.description === 'string' ? raw.description : null,
-      language: typeof raw.language === 'string' ? raw.language : null,
-      timezone: typeof raw.timezone === 'string' ? raw.timezone : null,
-      onboarding_completed: raw.onboarding_completed === true,
-      avatar_url: typeof raw.avatar_url === 'string' ? raw.avatar_url : null,
-      blocked_at: typeof raw.blocked_at === 'string' ? raw.blocked_at : null,
-      blocked_reason:
-        typeof raw.blocked_reason === 'string' ? raw.blocked_reason : null,
-    },
-    error: null,
-  };
 }
 
 export async function getUserSubscription(
@@ -285,4 +296,140 @@ export async function listRecentSupportForUser(
   }
 
   return { rows: (data as RecentSupportRow[]) ?? [], error: null };
+}
+
+export type PostStatusCounts = {
+  total: number;
+  draft: number;
+  awaitingApproval: number;
+  scheduled: number;
+  published: number;
+  failed: number;
+};
+
+const emptyCounts = (): PostStatusCounts => ({
+  total: 0,
+  draft: 0,
+  awaitingApproval: 0,
+  scheduled: 0,
+  published: 0,
+  failed: 0,
+});
+
+function bumpStatus(counts: PostStatusCounts, status: string | null) {
+  const s = String(status ?? '')
+    .trim()
+    .toLowerCase();
+  counts.total += 1;
+  if (s === 'draft' || s === 'concept') counts.draft += 1;
+  else if (
+    s === 'pending_approval' ||
+    s === 'awaiting_approval' ||
+    s === 'ter_goedkeuring' ||
+    s === 'wacht_op_goedkeuring' ||
+    s === 'approved' ||
+    s === 'goedgekeurd'
+  ) {
+    counts.awaitingApproval += 1;
+  } else if (s === 'scheduled' || s === 'gepland') counts.scheduled += 1;
+  else if (s === 'published' || s === 'gepubliceerd') counts.published += 1;
+  else if (
+    s === 'failed' ||
+    s === 'error' ||
+    s === 'publication_failed' ||
+    s === 'mislukt'
+  ) {
+    counts.failed += 1;
+  }
+}
+
+export async function getPostStatusCountsForUser(
+  userId: string,
+): Promise<{ counts: PostStatusCounts; error: string | null }> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from('posts')
+      .select('status')
+      .eq('user_id', userId)
+      .limit(2000);
+
+    if (error) {
+      console.error('[users] post counts failed:', error.message);
+      return { counts: emptyCounts(), error: 'Poststatussen konden niet worden geladen.' };
+    }
+
+    const counts = emptyCounts();
+    for (const row of data ?? []) {
+      bumpStatus(
+        counts,
+        typeof (row as { status?: string }).status === 'string'
+          ? (row as { status: string }).status
+          : null,
+      );
+    }
+    return { counts, error: null };
+  } catch (err) {
+    console.error(
+      '[users] post counts unexpected:',
+      err instanceof Error ? err.message : 'unknown',
+    );
+    return { counts: emptyCounts(), error: 'Poststatussen konden niet worden geladen.' };
+  }
+}
+
+/** Best-effort last activity from posts / support / usage. */
+export async function getUserLastActivityAt(
+  userId: string,
+): Promise<{ at: string | null; error: string | null }> {
+  try {
+    const supabase = await createClient();
+    const candidates: string[] = [];
+
+    const [posts, support] = await Promise.all([
+      supabase
+        .from('posts')
+        .select('created_at, published_at, scheduled_for')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      supabase
+        .from('support_messages')
+        .select('created_at, updated_at')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+    ]);
+
+    const push = (value: unknown) => {
+      if (typeof value === 'string' && value) candidates.push(value);
+    };
+
+    if (posts.data) {
+      const p = posts.data as Record<string, unknown>;
+      push(p.published_at);
+      push(p.scheduled_for);
+      push(p.created_at);
+    }
+    if (support.data) {
+      const s = support.data as Record<string, unknown>;
+      push(s.updated_at);
+      push(s.created_at);
+    }
+
+    if (candidates.length === 0) {
+      return { at: null, error: null };
+    }
+
+    candidates.sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+    return { at: candidates[0] ?? null, error: null };
+  } catch (err) {
+    console.error(
+      '[users] last activity unexpected:',
+      err instanceof Error ? err.message : 'unknown',
+    );
+    return { at: null, error: null };
+  }
 }

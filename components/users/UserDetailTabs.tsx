@@ -2,14 +2,13 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import type { UserDetailTab } from '@/lib/users/tabs';
+import type { UserDetailNavTab } from '@/lib/users/tabs';
 
 type Props = {
-  userId: string;
-  tabs: UserDetailTab[];
+  tabs: UserDetailNavTab[];
 };
 
-export function UserDetailTabs({ userId, tabs }: Props) {
+export function UserDetailTabs({ tabs }: Props) {
   const pathname = usePathname();
 
   return (
@@ -18,16 +17,15 @@ export function UserDetailTabs({ userId, tabs }: Props) {
       aria-label="Gebruikerssecties"
     >
       {tabs.map((tab) => {
-        const href = tab.href(userId);
         const active =
           tab.id === 'overview'
-            ? pathname === href
-            : pathname === href || pathname.startsWith(`${href}/`);
+            ? pathname === tab.href
+            : pathname === tab.href || pathname.startsWith(`${tab.href}/`);
 
         return (
           <Link
             key={tab.id}
-            href={href}
+            href={tab.href}
             className={`whitespace-nowrap rounded-[10px] px-3 py-2 text-sm ${
               active
                 ? 'bg-brand-navy font-medium text-white'

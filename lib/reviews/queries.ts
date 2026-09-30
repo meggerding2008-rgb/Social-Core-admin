@@ -426,82 +426,91 @@ export async function listUsersNeedingReviews(options?: {
 export async function getUserReviewSchedule(
   userId: string,
 ): Promise<UserReviewSchedule | null> {
-  const all = await listUsersNeedingReviews({ soonDays: 3650, limit: 500 });
-  const hit = all.find((u) => u.userId === userId);
-  if (hit) return hit;
+  try {
+    const supabase = await createClient();
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select(
+        `
+        id, name, email, subscription_tier, created_at,
+        subscriptions ( tier, status )
+      `,
+      )
+      .eq('id', userId)
+      .maybeSingle();
 
-  // Not overdue/soon — still compute for display
-  const supabase = await createClient();
-  const { data: user } = await supabase
-    .from('users')
-    .select(
-      `
-      id, name, email, subscription_tier, created_at,
-      subscriptions ( tier, status )
-    `,
-    )
-    .eq('id', userId)
-    .maybeSingle();
-  if (!user) return null;
+    if (userError) {
+      console.error('[reviews] schedule user failed:', userError.message);
+      return null;
+    }
+    if (!user) return null;
 
-  const row = user as Record<string, unknown>;
-  const first = Array.isArray(row.subscriptions)
-    ? row.subscriptions[0]
-    : row.subscriptions;
-  let subTier: string | null = null;
-  if (first && typeof first === 'object') {
-    const s = first as Record<string, unknown>;
-    if (typeof s.tier === 'string') subTier = s.tier;
-  }
-  const tier = normalizePlanSlug(
-    subTier ||
-      (typeof row.subscription_tier === 'string'
-        ? row.subscription_tier
-        : 'silver'),
-  );
+    const row = user as Record<string, unknown>;
+    const first = Array.isArray(row.subscriptions)
+      ? row.subscriptions[0]
+      : row.subscriptions;
+    let subTier: string | null = null;
+    if (first && typeof first === 'object') {
+      const s = first as Record<string, unknown>;
+      if (typeof s.tier === 'string') subTier = s.tier;
+    }
+    const tier = normalizePlanSlug(
+      subTier ||
+        (typeof row.subscription_tier === 'string'
+          ? row.subscription_tier
+          : 'silver'),
+    );
 
-  const { data: lastRow } = await supabase
-    .from('content_reviews')
-    .select('sent_at, created_at')
-    .eq('user_id', userId)
-    .in('status', ['verzonden', 'gepubliceerd'])
-    .order('sent_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    const { data: lastRow } = await supabase
+      .from('content_reviews')
+      .select('sent_at, created_at')
+      .eq('user_id', userId)
+      .in('status', ['verzonden', 'gepubliceerd'])
+      .order('sent_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-  const last =
-    (lastRow &&
-      typeof (lastRow as { sent_at?: string }).sent_at === 'string' &&
-      (lastRow as { sent_at: string }).sent_at) ||
-    (lastRow &&
-      typeof (lastRow as { created_at?: string }).created_at === 'string' &&
-      (lastRow as { created_at: string }).created_at) ||
-    null;
+    const last =
+      (lastRow &&
+        typeof (lastRow as { sent_at?: string }).sent_at === 'string' &&
+        (lastRow as { sent_at: string }).sent_at) ||
+      (lastRow &&
+        typeof (lastRow as { created_at?: string }).created_at === 'string' &&
+        (lastRow as { created_at: string }).created_at) ||
+      null;
 
-  const due = nextReviewDueDate({
-    tier,
-    lastSentAt: last,
-    fallbackStart:
-      typeof row.created_at === 'string' ? row.created_at : undefined,
-  });
-  const now = Date.now();
+    const due = nextReviewDueDate({
+      tier,
+      lastSentAt: last,
+      fallbackStart:
+        typeof row.created_at === 'string' ? row.created_at : undefined,
+    });
+    const now = Date.now();
 
-  return {
-    userId,
-    label:
-      (typeof row.name === 'string' && row.name) ||
-      (typeof row.email === 'string' && row.email) ||
+    return {
       userId,
-    email: typeof row.email === 'string' ? row.email : null,
-    tier,
-    tierLabel: tier,
-    frequencyLabel: reviewFrequencyLabel(tier),
-    lastSentAt: last,
-    nextDue: due.toISOString(),
-    nextDueDate: due,
-    overdue: due.getTime() <= now,
-    dueSoon:
-      due.getTime() > now &&
-      due.getTime() - now <= reviewIntervalDays(tier) * 24 * 60 * 60 * 1000,
-  };
+      label:
+        (typeof row.name === 'string' && row.name) ||
+        (typeof row.email === 'string' && row.email) ||
+        userId,
+      email: typeof row.email === 'string' ? row.email : null,
+      tier,
+      tierLabel: tier,
+      frequencyLabel: reviewFrequencyLabel(tier),
+      lastSentAt: last,
+      nextDue: due.toISOString(),
+      nextDueDate: due,
+      overdue: due.getTime() <= now,
+      dueSoon:
+        due.getTime() > now &&
+        due.getTime() - now <=
+          reviewIntervalDays(tier) * 24 * 60 * 60 * 1000,
+    };
+  } catch (err) {
+    console.error(
+      '[reviews] schedule unexpected:',
+      err instanceof Error ? err.message : 'unknown',
+    );
+    return null;
+  }
 }

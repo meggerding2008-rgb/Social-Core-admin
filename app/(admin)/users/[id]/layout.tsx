@@ -6,7 +6,8 @@ import {
 } from '@/lib/auth/require-admin';
 import { canViewUsers } from '@/lib/auth/permissions';
 import { getUserProfile } from '@/lib/users/queries';
-import { tabsForRole } from '@/lib/users/tabs';
+import { navTabsForUser } from '@/lib/users/tabs';
+import { isUserId } from '@/lib/users/validate-id';
 import { UserDetailHeader } from '@/components/users/UserDetailHeader';
 
 export const dynamic = 'force-dynamic';
@@ -21,6 +22,10 @@ export default async function UserDetailLayout({
   const admin = await requireAdmin();
   if (!canViewUsers(admin.profile.role)) {
     throw new ForbiddenAdminError();
+  }
+
+  if (!isUserId(params.id)) {
+    notFound();
   }
 
   const { row: user, error } = await getUserProfile(params.id);
@@ -43,7 +48,8 @@ export default async function UserDetailLayout({
 
   if (!user) notFound();
 
-  const tabs = tabsForRole(admin.profile.role);
+  // Resolve href strings server-side — never pass functions to Client Components
+  const tabs = navTabsForUser(admin.profile.role, user.id);
 
   return (
     <UserDetailHeader user={user} tabs={tabs}>
