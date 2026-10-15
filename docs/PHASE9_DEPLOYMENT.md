@@ -11,8 +11,9 @@ Deze checklist is voorbereiding. **Deploy niet** tot jij dat expliciet vraagt.
 | `NEXT_PUBLIC_SUPABASE_URL` | ja | Zelfde project als gebruikersapp |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | ja | Anon/publishable key |
 | `SUPABASE_SERVICE_ROLE_KEY` | ja | Alleen server (Auth Admin) |
+| `STRIPE_SECRET_KEY` | ja (voor betalingsretry) | Zelfde secret als gebruikersapp; alleen server |
 | `NEXT_PUBLIC_ADMIN_URL` | aanbevolen | `https://admin.socialcore.nl` |
-| `NEXT_PUBLIC_USER_APP_URL` | aanbevolen | Reset-redirect |
+| `NEXT_PUBLIC_USER_APP_URL` | aanbevolen | Reset-redirect + portal return |
 | `USER_APP_URL` | optioneel | Broadcast dispatcher base URL |
 | `ADMIN_BROADCAST_TOKEN` | optioneel | Zelfde token als gebruikersapp |
 

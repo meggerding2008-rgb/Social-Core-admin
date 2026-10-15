@@ -121,11 +121,20 @@ export function subscriptionStatusLabel(status: string | null | undefined): stri
   switch (String(status ?? '').toLowerCase()) {
     case 'active':
       return 'Actief';
+    case 'trialing':
+      return 'Trial';
     case 'cancelled':
     case 'canceled':
       return 'Opgezegd';
     case 'paused':
-      return 'Gepauzeerd';
+      return 'Gepauzeerd (betaling)';
+    case 'past_due':
+      return 'Betaling mislukt';
+    case 'unpaid':
+      return 'Onbetaald';
+    case 'incomplete':
+    case 'incomplete_expired':
+      return 'Betaling openstaand';
     case '':
       return 'Geen abonnement';
     default:

@@ -5,6 +5,8 @@ import {
   subscriptionStatusLabel,
 } from '@/lib/users/types';
 import { AccountStatusBadge } from '@/components/users/AccountStatusBadge';
+import { PaymentIssueBadge } from '@/components/users/PaymentIssueBadge';
+import { isPaymentIssueStatus } from '@/lib/user-billing/payment-labels';
 import { formatSupportDateTime } from '@/lib/support/labels';
 
 type Props = {
@@ -61,7 +63,12 @@ export function UserList({ rows }: Props) {
                   </p>
                   <div className="min-w-0">
                     <p className="text-sm text-brand-navy">{plan}</p>
-                    <p className="text-xs text-brand-accent">{subStatus}</p>
+                    <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
+                      <p className="text-xs text-brand-accent">{subStatus}</p>
+                      {isPaymentIssueStatus(row.subscription?.status) ? (
+                        <PaymentIssueBadge badge="payment_failed" />
+                      ) : null}
+                    </div>
                   </div>
                   <AccountStatusBadge status={row.account_status} />
                   <p className="text-xs text-brand-accent lg:text-right">

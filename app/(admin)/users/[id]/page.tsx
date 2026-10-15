@@ -36,8 +36,10 @@ import { formatSupportDateTime } from '@/lib/support/labels';
 import { UserAdminActions } from '@/components/users/UserAdminActions';
 import { ImpersonationButton } from '@/components/users/ImpersonationButton';
 import { StatusBadge } from '@/components/support/StatusBadge';
+import { PaymentIssueBadge } from '@/components/users/PaymentIssueBadge';
 import { isUserId } from '@/lib/users/validate-id';
 import { postStatusLabel } from '@/lib/user-posts/types';
+import { isPaymentIssueStatus } from '@/lib/user-billing/payment-labels';
 
 export const dynamic = 'force-dynamic';
 
@@ -350,8 +352,14 @@ export default async function UserOverviewPage({
               <dt className="text-xs uppercase tracking-wide text-brand-accent">
                 Abonnementsstatus
               </dt>
-              <dd className="text-sm text-brand-navy">
-                {subscriptionStatusLabel(subscription.status)}
+              <dd className="flex flex-wrap items-center gap-2 text-sm text-brand-navy">
+                <span>{subscriptionStatusLabel(subscription.status)}</span>
+                {isPaymentIssueStatus(subscription.status) ? (
+                  <PaymentIssueBadge badge="payment_failed" />
+                ) : String(subscription.status).toLowerCase() === 'active' ||
+                  String(subscription.status).toLowerCase() === 'trialing' ? (
+                  <PaymentIssueBadge badge="active" />
+                ) : null}
               </dd>
             </div>
             <div>
@@ -389,10 +397,8 @@ export default async function UserOverviewPage({
                 Betaalprobleem
               </dt>
               <dd className="text-sm text-brand-navy">
-                {['past_due', 'unpaid', 'incomplete'].includes(
-                  String(subscription.status).toLowerCase(),
-                )
-                  ? 'Ja — controleer betalingen'
+                {isPaymentIssueStatus(subscription.status)
+                  ? 'Ja — open Betalingen-tab voor retry / betaallink'
                   : 'Nee'}
               </dd>
             </div>

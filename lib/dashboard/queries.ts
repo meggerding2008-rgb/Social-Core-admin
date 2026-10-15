@@ -230,7 +230,13 @@ export async function getDashboardData(): Promise<{
       supabase
         .from('subscriptions')
         .select('id', { count: 'exact', head: true })
-        .in('status', ['past_due', 'unpaid', 'incomplete']),
+        .in('status', [
+          'paused',
+          'past_due',
+          'unpaid',
+          'incomplete',
+          'incomplete_expired',
+        ]),
     ),
   ]);
 
@@ -307,7 +313,7 @@ export async function getDashboardData(): Promise<{
       label: 'Mislukte betalingen',
       value: failedPayments,
       href: '/users',
-      hint: 'past_due / unpaid / incomplete',
+      hint: 'paused / past_due / unpaid / incomplete',
     },
     {
       label: 'Openstaande pop-ups',
@@ -401,7 +407,7 @@ export async function getDashboardData(): Promise<{
     actions.push({
       id: 'failed-payments',
       title: `${failedPayments} abonnement(en) met betaalprobleem`,
-      meta: 'past_due / unpaid / incomplete',
+      meta: 'paused / past_due / unpaid / incomplete',
       href: '/users',
       urgency: 'high',
     });

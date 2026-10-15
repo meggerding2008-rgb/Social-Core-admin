@@ -56,7 +56,9 @@ export function UserBillingPanel({
   return (
     <div className="space-y-5">
       <section className="rounded-card border border-brand-border bg-brand-white p-5">
-        <h3 className="text-sm font-semibold text-brand-navy">Abonnement (read-only Stripe)</h3>
+        <h3 className="text-sm font-semibold text-brand-navy">
+          Abonnement (Supabase)
+        </h3>
         {!subscription ? (
           <p className="mt-2 text-sm text-brand-accent">Geen subscriptions-rij.</p>
         ) : (
